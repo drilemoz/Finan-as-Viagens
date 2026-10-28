@@ -14,7 +14,7 @@ object FinanceMath {
 
     fun parseAmount(input: String, decimals: Int = 2): Long? {
         val sanitized = input.trim().replace(',', '.')
-        if (decimals !in 0..2) return null
+        if (decimals !in 0..3) return null
         val pattern = if (decimals == 0) Regex("^\\d{1,12}$")
             else Regex("^\\d{1,12}(?:\\.\\d{1,$decimals})?$")
         if (!pattern.matches(sanitized)) return null

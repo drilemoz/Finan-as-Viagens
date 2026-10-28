@@ -1,5 +1,15 @@
 # Alterações
 
+## 0.1.0-alpha.4 (2026-10-27) • versionCode 4
+
+- Nova aba inferior **Recicláveis** com apenas latinhas de alumínio e cobre, adequados ao transporte na bicicleta.
+- Estoque por coletas, vendas e ajustes; histórico com exclusão segura. Ajustes exigem justificativa.
+- Configuração inicial: **70 latinhas ≈ 1 kg** e **R$ 6,00/kg**, ambos ajustáveis. A estimativa é identificada; peso medido prevalece em vendas. Cobre usa peso informado e preço de venda manual.
+- Venda confirmada gera **receita de Trabalho** e baixa estoque atomicamente, sem contar valor estimado como dinheiro; o histórico de finanças protege receitas vinculadas.
+- Migração SQLite 1/2→3 aditiva, backup JSON schema 3 com vínculos de vendas e restauração v1/v2; CSV separado para movimentos de estoque.
+- Testes locais de cálculos inteiros, SQL de migração e análise sintática. Build completo do Android e teste físico **ainda pendentes**.
+
+
 ## 0.1.0-alpha.3 (2026-10-27) • versionCode 3
 
 - Redesenhado o editor de lançamentos com layout compacto, seções organizadas, local opcional e ação Salvar sempre disponível na base da janela.

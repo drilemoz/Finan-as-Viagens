@@ -313,9 +313,9 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.3 · versionCode 3", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.4 · versionCode 4", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
-        item { Text("Controle financeiro offline para a cicloviagem: receitas, despesas, categorias, saldo disponível, orçamento diário e autonomia estimada.") }
+        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: receitas, despesas, coleta de latinhas e cobre, vendas, estoque, orçamento diário e autonomia estimada.") }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }

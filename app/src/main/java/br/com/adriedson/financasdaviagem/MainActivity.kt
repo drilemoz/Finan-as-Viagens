@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import br.com.adriedson.financasdaviagem.data.Entry
+import br.com.adriedson.financasdaviagem.data.RecyclingEvent
 import br.com.adriedson.financasdaviagem.data.FinanceRepository
 import br.com.adriedson.financasdaviagem.ui.*
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +42,7 @@ private fun FinanceApp(activity: ComponentActivity) {
     val scope = rememberCoroutineScope()
     var settings by remember { mutableStateOf(repo.settings()) }
     var entries by remember { mutableStateOf(emptyList<Entry>()) }
+    var recycling by remember { mutableStateOf(emptyList<RecyclingEvent>()) }
     var screen by remember { mutableStateOf("home") }
     var editing by remember { mutableStateOf<Entry?>(null) }
     var addKind by remember { mutableStateOf<String?>(null) }
@@ -50,9 +52,12 @@ private fun FinanceApp(activity: ComponentActivity) {
     fun refresh() {
         scope.launch {
             try {
-                val loaded = withContext(Dispatchers.IO) { repo.all() to repo.settings() }
+                val loaded = withContext(Dispatchers.IO) {
+                    Triple(repo.all(), repo.settings(), repo.recyclingEvents())
+                }
                 entries = loaded.first
                 settings = loaded.second
+                recycling = loaded.third
             } catch (t: Exception) { notify("Não foi possível ler os dados: ${t.message}") }
         }
     }
@@ -92,6 +97,19 @@ private fun FinanceApp(activity: ComponentActivity) {
                 }
                 notify("CSV exportado")
             } catch (t: Exception) { notify("Falha no CSV: ${t.message}") }
+        }
+    }
+    val recyclingCsvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use {
+                        it.write("\uFEFF")
+                        it.write(repo.exportRecyclingCsv())
+                    } ?: throw IOException("Não foi possível escrever o CSV de reciclagem")
+                }
+                notify("Histórico de reciclagem exportado")
+            } catch (t: Exception) { notify("Falha no CSV de reciclagem: ${t.message}") }
         }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -136,6 +154,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                     NavigationBar(containerColor = scheme.background) {
                         listOf(Triple("home", "Painel", Icons.Outlined.Home),
                             Triple("history", "Histórico", Icons.Outlined.ReceiptLong),
+                            Triple("recycling", "Recicláveis", Icons.Outlined.Recycling),
                             Triple("settings", "Configurações", Icons.Outlined.Settings)).forEach { (target, label, icon) ->
                             NavigationBarItem(selected = screen == target, onClick = { screen = target },
                                 icon = { Icon(icon, contentDescription = label) }, label = { Text(label) })
@@ -151,7 +170,34 @@ private fun FinanceApp(activity: ComponentActivity) {
                         onAddIncome = { addKind = "income" },
                         onHistory = { screen = "history" },
                         onSettings = { screen = "settings" })
-                    "history" -> HistoryScreen(entries, onEdit = { editing = it })
+                    "history" -> HistoryScreen(entries, onEdit = { entry ->
+                        scope.launch {
+                            if (withContext(Dispatchers.IO) { repo.isRecyclingEntry(entry.id) }) {
+                                notify("Esta receita pertence a uma venda. Gerencie na aba Recicláveis.")
+                                screen = "recycling"
+                            } else editing = entry
+                        }
+                    })
+                    "recycling" -> RecyclingScreen(recycling, settings,
+                        onAdd = { event, complete ->
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { repo.addRecyclingEvent(event) }
+                                    refresh(); complete(true)
+                                    notify(if (event.action == "sale") "Venda e receita de Trabalho registradas" else "Estoque atualizado")
+                                } catch (t: Exception) { complete(false); notify("Falha na reciclagem: ${t.message}") }
+                            }
+                        },
+                        onDelete = { id ->
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { repo.deleteRecyclingEvent(id) }
+                                    refresh(); notify("Registro excluído")
+                                } catch (t: Exception) { notify("Não foi possível excluir: ${t.message}") }
+                            }
+                        },
+                        onSaveConfig = ::saveSettings,
+                        onExport = { recyclingCsvLauncher.launch("financas-da-viagem-reciclagem.csv") })
                     "settings" -> SettingsScreen(settings, ::saveSettings,
                         onBackup = {
                             val date = SimpleDateFormat("yyyyMMdd-HHmm", Locale.ROOT).format(Date())
@@ -190,7 +236,7 @@ private fun FinanceApp(activity: ComponentActivity) {
             val backup = pendingImport!!
             AlertDialog(onDismissRequest = { pendingImport = null },
                 title = { Text("Restaurar backup?") },
-                text = { Text("Os ${backup.entries.size} lançamentos do arquivo irão SUBSTITUIR todos os lançamentos e configurações atuais. Exporte um backup antes se quiser preservar os dados atuais.") },
+                text = { Text("Os ${backup.entries.size} lançamentos financeiros e ${backup.recyclingEvents.size} eventos de reciclagem do arquivo irão SUBSTITUIR todos os dados atuais. Exporte um backup antes.") },
                 confirmButton = {
                     TextButton(onClick = {
                         pendingImport = null

@@ -9,3 +9,8 @@
 - Ao entregar, distinguir testes locais, build GitHub e testes em aparelho.
 
 - Dados de contagem de itens são opcionais; preservar migração 1→2 e a compatibilidade de backups v1/v2.
+- Reciclagem: apenas `cans` e `copper`; nunca misturar material coletado/estimado com dinheiro recebido.
+- Parâmetros iniciais são 70 latinhas/kg estimados e R$ 6,00/kg, ambos configuráveis. Cobre não tem preço implícito.
+- Evento de venda e receita `Trabalho` vinculada devem ser criados ou excluídos na **mesma transação SQLite**. Proteger lançamentos vinculados no editor geral.
+- Manter backup JSON schema 3 e compatibilidade com v1/v2, migração SQLite 1→2→3 aditiva e exportação CSV operacional.
+

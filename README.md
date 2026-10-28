@@ -1,11 +1,22 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.3 / versionCode 3** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.4 / versionCode 4** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Novidade na alpha.4: aba Recicláveis 🥫
+
+- Navegação inferior **Recicláveis**, com estoque de **latinhas de alumínio** e **cobre** somente. Sem PET, papelão, ferro ou outros materiais no módulo de reciclagem, conforme a limitação de carga da bicicleta.
+- **Coletar**, **vender** e **ajustar estoque** (ajustes obrigatoriamente explicados), com histórico e exclusão controlada. A exclusão de uma coleta que inviabilize venda posterior é recusada.
+- Padrões ajustáveis no botão de parâmetros: **70 latinhas ≈ 1 kg** (estimativa fornecida pelo usuário) e **R$ 6,00 por kg**. O app jamais apresenta o peso de latinhas calculado como balança real. Uma pesagem real opcional prevalece no momento da venda.
+- Cobre é registrado por **peso informado em kg**, sem conversão por contagem e sem preço padrão inventado; cada venda exige seu preço/kg.
+- A coleta só aumenta o estoque. Uma **venda após recebimento** diminui o estoque e cria exatamente **uma receita na categoria Trabalho** na mesma transação SQLite; ela já integra o saldo geral. Não registrar a mesma venda pelo editor financeiro comum, para evitar receita duplicada.
+- O valor potencial das latinhas em estoque é **estimativa não recebida**, separada do dinheiro real. O saldo financeiro não inclui materiais ainda não vendidos.
+- Receitas originadas de vendas são protegidas contra edição/exclusão isolada no histórico financeiro: administre-as na aba Recicláveis. Exclusão de venda desfaz estoque e receita na mesma transação.
+- **SQLite 3** com migrações aditivas 1→2→3 e 2→3, sem apagar dados. **Backup JSON schema 3** inclui eventos, vínculos com receitas e novos parâmetros, e continua importando backups schema 1/2. **CSV de reciclagem** separado do CSV financeiro.
 
 ## Funcionalidades implementadas
 
 - Editor de lançamento redesenhado, compacto e responsivo: cabeçalho, alternância despesa/receita, valor destacado, detalhes opcionais expansíveis e botão Salvar fixo.
-- Opcional **Por quantidade** para latinhas ou outros itens, calculando preço unitário × quantidade em aritmética inteira. Quantidade e preço persistidos em SQLite v2, backup JSON v2 e CSV; backups JSON v1 continuam aceitos.
+- O editor financeiro legado mantém a entrada opcional **Por quantidade**; vendas novas com controle de estoque devem ser feitas na aba **Recicláveis**. Os lançamentos existentes são mantidos; backups JSON v1 e v2 seguem aceitos.
 
 
 - Painel: saldo disponível, orçamento diário, gasto de hoje, estimativa de dias de autonomia, gastos totais e distribuição por categoria.
@@ -39,15 +50,17 @@ Aplicativo Android **0.1.0-alpha.3 / versionCode 3** para controle offline de fi
 
 O banco SQLite fica no diretório privado do aplicativo. Android Auto Backup é desativado. Backup/CSV são exportados pelo Storage Access Framework. Faça backup antes de desinstalar: limpar dados/desinstalar apaga os lançamentos. Restaurar um backup substitui o histórico e as configurações, após confirmação.
 
-Limitações atuais: sem login, sem sincronização com contas bancárias, sem GPS, sem notificações, sem importação CSV, sem transferência entre contas, sem busca por texto e sem previsão automática de câmbio.
+Limitações atuais: sem login, sem sincronização com contas bancárias, sem GPS, sem notificações, sem importação CSV, sem transferência entre contas, sem busca por texto e sem previsão automática de câmbio. O peso de alumínio derivado de quantidade é uma estimativa, não medição.
 
 ## Estrutura
 
 - `app/src/main/java/.../core/FinanceMath.kt`: centavos, parsing, taxa e autonomia.
-- `.../data/FinanceRepository.kt`: persistência SQLite, configurações, backup e CSV.
+- `.../data/FinanceRepository.kt`: persistência SQLite, contas, estoque, vínculos de receita, backup e CSV.
 - `.../ui`: tema, painel, histórico, edição, configurações e Sobre.
 - `.github/workflows/android.yml`: testes e APK Debug via CI.
-- `app/src/test`: testes de matemática monetária.
+- `.../core/RecyclingMath.kt`: estimativas de peso, cálculo por kg e validações inteiras.
+- `.../ui/RecyclingScreen.kt`: aba Recicláveis, formulário e parâmetros.
+- `app/src/test`: testes de matemática monetária e de reciclagem.
 
 ## Versionamento
 
@@ -57,6 +70,6 @@ A cada alteração, incrementar versão `0.1.0-alpha.N`, `versionCode` e referê
 
 A imagem enviada está preservada em `docs/layout_referencia.jpg` para orientar ajustes futuros. O layout é responsivo e os valores são calculados com dados reais, não copiados do desenho.
 
-## Migração alpha.3
+## Migrações históricas e alpha.4
 
 O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. O backup JSON gerado usa schema 2, e restauração aceita schema 1 e 2.
