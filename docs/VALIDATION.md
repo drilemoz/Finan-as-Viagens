@@ -50,3 +50,12 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Verificar doações na conta física, banco e reserva, sem duplicação do saldo.
 - Verificar contas a pagar pendentes, vencidas e pagas; pagamento atômico vinculado e proteção do histórico; backups v1–v5; exportação CSV.
 - Build Gradle/Android e teste de interface em aparelho ainda pendentes.
+
+## alpha.7 (2026-10-27)
+
+- Compilar e testar `MoneyInput` e `ReportMath` (camada pura), incluindo formatação de milhares, centavos, moedas de unidade inteira, agrupamento por categoria e seleção de período.
+- Testar em Android: digitação, seleção e apagar valores em campos monetários (inclusive ao editar valor existente), colar texto, separadores, valores nulos, teclado numérico.
+- Confirmar que a cotação manual e o peso medido em kg não são submetidos à máscara de moeda.
+- Confirmar relatórios de Trabalho/Doação e que transferências, coletas não vendidas e saldos iniciais ficam excluídos.
+- Sem mudança do esquema SQLite v5 e backup JSON schema 5.
+- Build `:app:assembleDebug` e testes reais em celular ainda pendentes até GitHub Actions.

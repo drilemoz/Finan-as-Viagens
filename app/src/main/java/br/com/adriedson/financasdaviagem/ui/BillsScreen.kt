@@ -200,9 +200,8 @@ private fun BillEditor(existing: Bill?, onDismiss: () -> Unit, onSave: (Bill) ->
                     OutlinedTextField(title, { if (it.length <= 100) title = it },
                         label = { Text("Conta ou despesa") }, placeholder = { Text("Ex.: Internet, hospedagem") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(amount, { if (it.length <= 22) amount = it },
-                        label = { Text("Valor (R$)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                    MoneyField(value = amount, onValueChange = { amount = it },
+                        label = "Valor da conta", modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(date, { if (it.length <= 10) date = it },
                         label = { Text("Vencimento (DD/MM/AAAA)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))

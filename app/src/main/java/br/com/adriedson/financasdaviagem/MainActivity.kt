@@ -211,7 +211,9 @@ private fun FinanceApp(activity: ComponentActivity) {
                         onAddDonation = { addCategory = "Doação"; addKind = "income" },
                         onBills = { screen = "bills" },
                         onHistory = { screen = "history" },
+                        onReports = { screen = "reports" },
                         onSettings = { screen = "settings" })
+                    "reports" -> ReportsScreen(entries, onBack = { screen = "home" })
                     "history" -> HistoryScreen(entries, onEdit = { entry ->
                         scope.launch {
                             if (withContext(Dispatchers.IO) { repo.isManagedEntry(entry.id) }) {

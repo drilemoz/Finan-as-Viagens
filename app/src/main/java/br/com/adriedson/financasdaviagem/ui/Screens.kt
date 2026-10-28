@@ -42,7 +42,7 @@ private fun expenseTotals(entries: List<Entry>) = entries.filter { it.kind == "e
 fun DashboardScreen(
     entries: List<Entry>, settings: Preferences, accounts: List<WalletAccount>, transfers: List<WalletTransfer>,
     onAddExpense: () -> Unit, onAddIncome: () -> Unit, onAddDonation: () -> Unit,
-    onBills: () -> Unit, onHistory: () -> Unit, onSettings: () -> Unit
+    onBills: () -> Unit, onHistory: () -> Unit, onReports: () -> Unit, onSettings: () -> Unit
 ) {
     val income = entries.filter { it.kind == "income" }.sumOf { it.brlCents }
     val expense = entries.filter { it.kind == "expense" }.sumOf { it.brlCents }
@@ -137,6 +137,12 @@ fun DashboardScreen(
                     shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
                     Icon(Icons.Outlined.VolunteerActivism, null); Spacer(Modifier.width(3.dp)); Text("Doação")
                 }
+            }
+        }
+        item {
+            OutlinedButton(onClick = onReports, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.BarChart, null); Spacer(Modifier.width(8.dp))
+                Text("Relatórios de receitas, despesas e trabalho")
             }
         }
         item {
@@ -296,16 +302,15 @@ fun SettingsScreen(
         item { Text("O saldo inicial e a reserva são gerenciados por conta na aba Carteiras.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         item { SettingsTile(Icons.Outlined.AccountBalanceWallet, "Carteiras e reserva", "Definir saldos iniciais e transferir entre contas", onAccounts) }
-        item { OutlinedTextField(value = budget, onValueChange = { budget = it },
-            label = { Text("Orçamento diário (R$)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)) }
+        item { MoneyField(value = budget, onValueChange = { budget = it },
+            label = "Orçamento diário", modifier = Modifier.fillMaxWidth()) }
         if (error.isNotEmpty()) item { Text(error, color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall) }
         item {
             Button(onClick = {
                 val budgetCents = FinanceMath.parseAmount(budget)
                 if (budgetCents == null) {
-                    error = "Digite números válidos, sem separador de milhar (ex.: 3200,00)."
+                    error = "Informe um orçamento válido em reais."
                 } else {
                     error = ""
                     onSave(settings.copy(dailyBudgetCents = budgetCents))
@@ -335,11 +340,11 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.6 · versionCode 6", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.7 · versionCode 7", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
         item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, orçamento diário e autonomia estimada.") }
-        item { SectionTitle("Novidades da alpha.6") }
-        item { Text("• Usar todas na venda de recicláveis: preenche o estoque atual.\n• Doação como receita com atalho no painel.\n• Contas a pagar com vencimento e pagamento integrado a Carteiras.") }
+        item { SectionTitle("Novidades da alpha.7") }
+        item { Text("• Pontuação automática ao digitar dinheiro em todos os formulários monetários.\n• Relatórios de receitas, despesas, doações e trabalho, com filtros de período e gastos por categoria.\n• Movimentações anteriores, reciclagem e carteiras preservadas.") }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }

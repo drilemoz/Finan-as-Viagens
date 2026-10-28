@@ -138,10 +138,8 @@ fun WalletScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(name, { if (it.length <= 50) name = it }, label = { Text("Nome") },
                         singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(opening, { if (it.length <= 22) opening = it },
-                        label = { Text("Saldo inicial em R$ (não é receita)") },
-                        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth())
+                    MoneyField(value = opening, onValueChange = { opening = it },
+                        label = "Saldo inicial (não é receita)", modifier = Modifier.fillMaxWidth())
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = reserveFlag, onCheckedChange = { reserveFlag = it })
                         Spacer(Modifier.width(9.dp)); Text("Reserva de emergência")
@@ -174,10 +172,8 @@ fun WalletScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     WalletAccountPicker("De", accounts, from) { from = it; if (from == to) to = accounts.firstOrNull { a -> a.id != from }?.id ?: from }
                     WalletAccountPicker("Para", accounts, to) { to = it }
-                    OutlinedTextField(amount, { if (it.length <= 22) amount = it },
-                        label = { Text("Valor em R$") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth())
+                    MoneyField(value = amount, onValueChange = { amount = it },
+                        label = "Valor da transferência", modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(note, { if (it.length <= 200) note = it },
                         label = { Text("Observação (opcional)") }, maxLines = 2)
                     Text("Disponível na origem: ${FinanceMath.format(balances[from] ?: 0L)}",

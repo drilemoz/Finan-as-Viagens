@@ -22,3 +22,7 @@
 - Contas a pagar: cadastramento não deve alterar saldo. Pagamento gera exatamente uma despesa na mesma transação SQLite e vincula `paid_entry_id`; bloquear edição/exclusão isolada de despesas vinculadas.
 - Doações são receitas manuais e devem ser associadas a uma carteira; se a carteira é de reserva, não integram a autonomia.
 - Estoque de recicláveis é derivado exclusivamente de `recycling_events`; nunca inferir estoque de outros lançamentos financeiros.
+
+- Alpha.7: formatos monetários durante digitação são responsabilidade do MoneyField; não aplicar máscara de centavos em cotação cambial ou peso (kg).
+- Relatórios usam apenas entries efetivos em BRL (brlCents); não somar transferências, estoque projetado ou saldos iniciais.
+- SQLite permanece v5 e backup JSON schema 5; versionCode 7 e nome da CI alpha.7.

@@ -1,6 +1,13 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.6 / versionCode 6** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.7 / versionCode 7** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Novidades na alpha.7: valores formatados e relatórios
+
+- **Digitação monetária automática**: em valores R$, digitar `1`, `2`, `3`, `4`, `5`, `6` apresenta sequencialmente `0,01`, `0,12`, `1,23`, `12,34`, `123,45` e `1.234,56`. O texto exibido possui pontuação, mas o parser recebe a forma canônica sem separador de milhares; o banco continua gravando `Long` em centavos.
+- `MoneyField` aplicado a receitas/despesas, preço por item, orçamento diário, saldos iniciais, transferência, conta a pagar, preço de venda e preço estimado por kg de recicláveis. Moedas sem frações (`PYG` e `CLP`) recebem apenas separador de milhar. **Cotações cambiais e pesos em kg NÃO são tratados como dinheiro** e mantêm seus próprios formatos.
+- **Relatórios** acessíveis pelo Painel: filtros de 7 dias, 30 dias e todo o histórico; entradas efetivas, saídas, resultado líquido, doações, receita de trabalho/reciclagem, categorias e evolução diária dos últimos sete dias. Coletas não vendidas, transferências e saldo inicial não são receitas.
+- Sem alterar a versão do banco SQLite (segue **v5**) ou o backup JSON (segue **schema 5**). Tudo é calculado a partir dos lançamentos existentes. Sem dependência de internet.
 
 ## Novidade na alpha.6: Usar todas, Doações e Contas a pagar
 

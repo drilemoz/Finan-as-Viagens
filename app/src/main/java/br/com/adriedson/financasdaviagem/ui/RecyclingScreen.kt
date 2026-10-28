@@ -272,9 +272,8 @@ private fun RecyclingEditor(action: String, config: Preferences, stockCans: Long
                                 else "Será usado o peso medido que você informar.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
-                        OutlinedTextField(unitPrice, { if (it.length < 20) unitPrice = it },
-                            label = { Text("Preço por kg (R$)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                        MoneyField(value = unitPrice, onValueChange = { unitPrice = it },
+                            label = "Preço por kg", modifier = Modifier.fillMaxWidth())
                         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(15.dp)) {
                             Column(Modifier.fillMaxWidth().padding(13.dp)) {
                                 Text("Receita de Trabalho", style = MaterialTheme.typography.labelMedium)
@@ -334,8 +333,8 @@ private fun RecyclingConfigEditor(config: Preferences, onDismiss: () -> Unit, on
                 Text("Estimativa inicial: 70 latinhas por kg e R$ 6,00/kg. Você pode mudar esses valores; não substituem uma pesagem real.")
                 OutlinedTextField(count, { count = it }, label = { Text("Latinhas estimadas por kg") },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(price, { price = it }, label = { Text("Preço estimado por kg (R$)") },
-                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                MoneyField(value = price, onValueChange = { price = it },
+                    label = "Preço estimado por kg", modifier = Modifier.fillMaxWidth())
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
             }
         }, confirmButton = {

@@ -142,12 +142,9 @@ fun EntryEditor(
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold)
                             } else {
-                                OutlinedTextField(amount, { if (it.length <= 24) { amount = it; error = "" } },
-                                    label = { Text("Valor ($currency)") },
-                                    placeholder = { Text(if (digits == 0) "1500" else "18,50") },
-                                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                    shape = RoundedCornerShape(12.dp))
+                                MoneyField(value = amount, onValueChange = { amount = it; error = "" },
+                                    label = "Valor ($currency)", currency = currency, decimals = digits,
+                                    modifier = Modifier.fillMaxWidth())
                             }
                             if (currency != "BRL" && converted != null) {
                                 Text("Equivalente: ${FinanceMath.format(converted)}",
@@ -213,12 +210,9 @@ fun EntryEditor(
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically) {
-                                    OutlinedTextField(unitPrice, {
-                                        if (it.length <= 24) { unitPrice = it; error = "" }
-                                    }, label = { Text("Preço/unid.") },
-                                        modifier = Modifier.weight(1.15f), singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                        shape = RoundedCornerShape(13.dp))
+                                    MoneyField(value = unitPrice, onValueChange = { unitPrice = it; error = "" },
+                                        label = "Preço/unid.", currency = currency, decimals = digits,
+                                        modifier = Modifier.weight(1.15f))
                                     OutlinedTextField(quantity, {
                                         if (it.length <= 7 && it.all(Char::isDigit)) { quantity = it; error = "" }
                                     }, label = { Text("Quantidade") },

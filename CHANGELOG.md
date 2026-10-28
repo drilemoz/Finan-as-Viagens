@@ -1,3 +1,11 @@
+## 0.1.0-alpha.7 (2026-10-27) • versionCode 7
+
+- Máscara de centavos e separador de milhar durante a digitação em campos monetários, sem alterar armazenamento inteiro.
+- Campo `MoneyField` compartilhado com suporte a moedas sem casas decimais; não aplicar em cotação nem peso.
+- Relatórios financeiros por período (7, 30 dias e tudo): receitas, despesas, resultado líquido, doações, trabalho/reciclagem, categorias e últimos sete dias.
+- Mantidos SQLite v5, backup JSON schema 5 e mecanismos de carteiras, contas, reciclagem e migração das versões anteriores.
+- Testes locais de formatação, matemática dos relatórios e parser Kotlin; build Android e teste em telefone pendentes.
+
 ## 0.1.0-alpha.6 (2026-10-27) • versionCode 6
 
 - Botão **Usar todas** na venda de latinhas e cobre, preenchendo a quantidade em estoque sem vender automaticamente.
