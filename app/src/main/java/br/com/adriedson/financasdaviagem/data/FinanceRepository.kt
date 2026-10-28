@@ -19,7 +19,11 @@ data class Entry(
     val originalMinor: Long = 0,
     val rateBrl: String = "1",
     val brlCents: Long = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** null = valor direto; cans/units = venda ou compra por unidade. */
+    val itemKind: String? = null,
+    val quantity: Int? = null,
+    val unitMinor: Long? = null
 )
 
 data class Preferences(
@@ -29,10 +33,10 @@ data class Preferences(
     val themeMode: String = "system"
 )
 
-val expenseCategories = listOf("Alimentação", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
-val incomeCategories = listOf("Economias", "Trabalho", "Doação", "Reembolso", "Outras receitas")
+val expenseCategories = listOf("Alimentação", "Bebidas", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
+val incomeCategories = listOf("Economias", "Venda de latinhas", "Trabalho", "Doação", "Reembolso", "Outras receitas")
 
-private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_viagem.db", null, 1) {
+private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_viagem.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,12 +49,19 @@ private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_v
             original_minor INTEGER NOT NULL CHECK(original_minor > 0),
             rate_brl TEXT NOT NULL,
             brl_cents INTEGER NOT NULL CHECK(brl_cents > 0),
-            created_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL,
+            item_kind TEXT,
+            quantity INTEGER,
+            unit_minor INTEGER
         )""")
         db.execSQL("CREATE INDEX idx_entries_time ON entries(created_at DESC)")
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        error("Migração SQLite obrigatória: não excluir dados do usuário")
+        if (oldVersion == 1 && newVersion == 2) {
+            db.execSQL("ALTER TABLE entries ADD COLUMN item_kind TEXT")
+            db.execSQL("ALTER TABLE entries ADD COLUMN quantity INTEGER")
+            db.execSQL("ALTER TABLE entries ADD COLUMN unit_minor INTEGER")
+        } else error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
     }
 }
 
@@ -75,10 +86,13 @@ class FinanceRepository(context: Context) {
 
     fun all(): List<Entry> {
         val output = mutableListOf<Entry>()
-        db.readableDatabase.rawQuery("SELECT id,kind,category,note,city,country,currency,original_minor,rate_brl,brl_cents,created_at FROM entries ORDER BY created_at DESC,id DESC", null).use { c ->
+        db.readableDatabase.rawQuery("SELECT id,kind,category,note,city,country,currency,original_minor,rate_brl,brl_cents,created_at,item_kind,quantity,unit_minor FROM entries ORDER BY created_at DESC,id DESC", null).use { c ->
             while (c.moveToNext()) output.add(Entry(
                 c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getString(4), c.getString(5),
-                c.getString(6), c.getLong(7), c.getString(8), c.getLong(9), c.getLong(10)
+                c.getString(6), c.getLong(7), c.getString(8), c.getLong(9), c.getLong(10),
+                if (c.isNull(11)) null else c.getString(11),
+                if (c.isNull(12)) null else c.getInt(12),
+                if (c.isNull(13)) null else c.getLong(13)
             ))
         }
         return output
@@ -91,6 +105,13 @@ class FinanceRepository(context: Context) {
         require(e.originalMinor > 0 && e.brlCents > 0 && e.originalMinor <= 999_999_999_999L && e.brlCents <= 999_999_999_999L)
         require(e.createdAt > 0 && e.createdAt <= System.currentTimeMillis() + 86_400_000L)
         require(FinanceMath.convertToBrl(e.originalMinor, e.currency, e.rateBrl) == e.brlCents)
+        if (e.itemKind == null) {
+            require(e.quantity == null && e.unitMinor == null)
+        } else {
+            require(e.itemKind in listOf("cans", "units"))
+            require(e.quantity != null && e.unitMinor != null)
+            require(FinanceMath.quantityTotal(e.unitMinor, e.quantity) == e.originalMinor)
+        }
     }
 
     private fun values(e: Entry) = ContentValues().apply {
@@ -98,6 +119,7 @@ class FinanceRepository(context: Context) {
         put("city", e.city); put("country", e.country); put("currency", e.currency)
         put("original_minor", e.originalMinor); put("rate_brl", e.rateBrl)
         put("brl_cents", e.brlCents); put("created_at", e.createdAt)
+        put("item_kind", e.itemKind); put("quantity", e.quantity); put("unit_minor", e.unitMinor)
     }
 
     fun save(e: Entry) {
@@ -112,7 +134,7 @@ class FinanceRepository(context: Context) {
     fun delete(id: Long) = db.writableDatabase.delete("entries", "id=?", arrayOf(id.toString()))
 
     fun createBackup(): String {
-        val root = JSONObject().put("schemaVersion", 1).put("createdAt", System.currentTimeMillis())
+        val root = JSONObject().put("schemaVersion", 2).put("createdAt", System.currentTimeMillis())
         val s = settings()
         root.put("settings", JSONObject().put("initialCents", s.initialCents).put("reserveCents", s.reserveCents)
             .put("dailyBudgetCents", s.dailyBudgetCents).put("themeMode", s.themeMode))
@@ -121,7 +143,8 @@ class FinanceRepository(context: Context) {
             data.put(JSONObject().put("id", e.id).put("kind", e.kind).put("category", e.category)
                 .put("note", e.note).put("city", e.city).put("country", e.country)
                 .put("currency", e.currency).put("originalMinor", e.originalMinor)
-                .put("rateBrl", e.rateBrl).put("brlCents", e.brlCents).put("createdAt", e.createdAt))
+                .put("rateBrl", e.rateBrl).put("brlCents", e.brlCents).put("createdAt", e.createdAt)
+                .put("itemKind", e.itemKind).put("quantity", e.quantity).put("unitMinor", e.unitMinor))
         }
         return root.put("entries", data).toString(2)
     }
@@ -131,7 +154,8 @@ class FinanceRepository(context: Context) {
     fun parseBackup(content: String): Backup {
         require(content.length <= 4_000_000) { "Arquivo muito grande" }
         val root = JSONObject(content)
-        require(root.getInt("schemaVersion") == 1) { "Versão de backup incompatível" }
+        val schema = root.getInt("schemaVersion")
+        require(schema == 1 || schema == 2) { "Versão de backup incompatível" }
         val pref = root.getJSONObject("settings")
         val settings = Preferences(pref.getLong("initialCents"), pref.getLong("reserveCents"),
             pref.getLong("dailyBudgetCents"), pref.getString("themeMode"))
@@ -144,7 +168,10 @@ class FinanceRepository(context: Context) {
             Entry(o.getLong("id"), o.getString("kind"), o.getString("category"),
                 o.getString("note"), o.getString("city"), o.getString("country"),
                 o.getString("currency"), o.getLong("originalMinor"), o.getString("rateBrl"),
-                o.getLong("brlCents"), o.getLong("createdAt"))
+                o.getLong("brlCents"), o.getLong("createdAt"),
+                if (schema == 2 && !o.isNull("itemKind")) o.getString("itemKind") else null,
+                if (schema == 2 && !o.isNull("quantity")) o.getInt("quantity") else null,
+                if (schema == 2 && !o.isNull("unitMinor")) o.getLong("unitMinor") else null)
         }
         items.forEach { verify(it); require(it.id > 0) }
         require(items.map { it.id }.distinct().size == items.size) { "IDs duplicados" }
@@ -174,12 +201,14 @@ class FinanceRepository(context: Context) {
             return "\"" + safe.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
         }
         return buildString {
-            append("data_iso;tipo;categoria;valor_original;moeda;taxa_brl;valor_brl;descricao;cidade;pais\r\n")
+            append("data_iso;tipo;categoria;valor_original;moeda;taxa_brl;valor_brl;descricao;cidade;pais;tipo_item;quantidade;preco_unitario\r\n")
             all().forEach { e ->
                 val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(e.createdAt))
                 val cols = listOf(date, e.kind, e.category,
                     FinanceMath.decimalInput(e.originalMinor, FinanceMath.digits(e.currency)), e.currency,
-                    e.rateBrl, FinanceMath.decimalInput(e.brlCents), e.note, e.city, e.country)
+                    e.rateBrl, FinanceMath.decimalInput(e.brlCents), e.note, e.city, e.country,
+                    e.itemKind ?: "", e.quantity?.toString() ?: "",
+                    e.unitMinor?.let { FinanceMath.decimalInput(it, FinanceMath.digits(e.currency)) } ?: "")
                 append(cols.joinToString(";") { escaped(it) }); append("\r\n")
             }
         }

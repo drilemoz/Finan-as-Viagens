@@ -1,8 +1,12 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.2 / versionCode 2** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.3 / versionCode 3** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
 
 ## Funcionalidades implementadas
+
+- Editor de lançamento redesenhado, compacto e responsivo: cabeçalho, alternância despesa/receita, valor destacado, detalhes opcionais expansíveis e botão Salvar fixo.
+- Opcional **Por quantidade** para latinhas ou outros itens, calculando preço unitário × quantidade em aritmética inteira. Quantidade e preço persistidos em SQLite v2, backup JSON v2 e CSV; backups JSON v1 continuam aceitos.
+
 
 - Painel: saldo disponível, orçamento diário, gasto de hoje, estimativa de dias de autonomia, gastos totais e distribuição por categoria.
 - Cadastro de **despesas e receitas**, com categorias, descrição, cidade e país opcionais.
@@ -29,13 +33,13 @@ Aplicativo Android **0.1.0-alpha.2 / versionCode 2** para controle offline de fi
 
 **GitHub Actions**: publique esta pasta na raiz de um repositório no GitHub e execute **Actions → Gerar APK → Run workflow**. Workflow usa Gradle 8.13, JDK 17, `android-actions/setup-android@v4` e Android SDK 35, executa testes unitários e publica APK Debug em Artifacts em caso de sucesso. Se o build falhar, baixe o log, sem presumir sucesso.
 
-> Este pacote **não inclui `gradle-wrapper.jar` nem um APK**. O workflow utiliza `gradle/actions/setup-gradle` para não exigir wrapper. O projeto fonte foi preparado para compilação, mas **não foi compilado no ambiente de geração** (sem Android SDK e Gradle/artefatos em cache). É preciso validar o novo build Android; os logs do build 1 mostraram falha antes da compilação em `setup-android@v3`, ao tentar instalar o pacote obsoleto `tools`. A alpha.2 corrige esse passo com v4 e `packages: platform-tools`.
+> Este pacote **não inclui `gradle-wrapper.jar` nem um APK**. O workflow utiliza `gradle/actions/setup-gradle` para não exigir wrapper. O projeto fonte foi preparado para compilação, mas **não foi compilado no ambiente de geração** (sem Android SDK e Gradle/artefatos em cache). É preciso validar o novo build Android; os logs do build 1 mostraram falha antes da compilação em `setup-android@v3`, ao tentar instalar o pacote obsoleto `tools`. A alpha.2 corrigiu esse passo com v4 e `packages: platform-tools`.
 
 ## Privacidade e backup
 
 O banco SQLite fica no diretório privado do aplicativo. Android Auto Backup é desativado. Backup/CSV são exportados pelo Storage Access Framework. Faça backup antes de desinstalar: limpar dados/desinstalar apaga os lançamentos. Restaurar um backup substitui o histórico e as configurações, após confirmação.
 
-Limitações da alpha.1: sem login, sem sincronização com contas bancárias, sem GPS, sem notificações, sem importação CSV, sem transferência entre contas, sem busca por texto e sem previsão automática de câmbio.
+Limitações atuais: sem login, sem sincronização com contas bancárias, sem GPS, sem notificações, sem importação CSV, sem transferência entre contas, sem busca por texto e sem previsão automática de câmbio.
 
 ## Estrutura
 
@@ -52,3 +56,7 @@ A cada alteração, incrementar versão `0.1.0-alpha.N`, `versionCode` e referê
 ## Referência visual
 
 A imagem enviada está preservada em `docs/layout_referencia.jpg` para orientar ajustes futuros. O layout é responsivo e os valores são calculados com dados reais, não copiados do desenho.
+
+## Migração alpha.3
+
+O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. O backup JSON gerado usa schema 2, e restauração aceita schema 1 e 2.

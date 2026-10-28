@@ -55,5 +55,13 @@ object FinanceMath {
     fun autonomyDays(usableCents: Long, dailyBudgetCents: Long): Long? =
         if (usableCents <= 0 || dailyBudgetCents <= 0) null else usableCents / dailyBudgetCents
 
+    /** Total exato por itens: 1..1.000.000 unidades, sem overflow nem ponto flutuante. */
+    fun quantityTotal(unitMinor: Long, quantity: Int): Long? {
+        if (unitMinor <= 0 || quantity !in 1..1_000_000) return null
+        return try {
+            Math.multiplyExact(unitMinor, quantity.toLong()).takeIf { it in 1..999_999_999_999L }
+        } catch (_: ArithmeticException) { null }
+    }
+
     fun safeAdd(a: Long, b: Long): Long = Math.addExact(a, b)
 }

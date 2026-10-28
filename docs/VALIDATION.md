@@ -18,3 +18,7 @@ Origem: logs enviados do GitHub Actions, workflow **Gerar APK**, execução 1, e
 ## Limites de validação
 
 A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutura e matemática locais não substituem o build real Android nem teste no aparelho. Caso o build falhe mais adiante, o novo log permitirá diagnosticar a etapa seguinte.
+
+## alpha.3
+- Verificar compatibilidade do schema SQLite 1→2, back-ups schema 1/2, fórmula quantidade × preço e modo claro/escuro.
+- Build Gradle e teste Android físico pendentes neste ambiente.

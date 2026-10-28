@@ -26,6 +26,16 @@ class FinanceMathTest {
         assertNull(FinanceMath.convertToBrl(100, "ARS", "abc"))
     }
 
+    @Test fun quantityValueIsExactAndBounded() {
+        assertEquals(500L, FinanceMath.quantityTotal(20L, 25)) // 25 latinhas × R$0,20
+        assertEquals(9_999_999L, FinanceMath.quantityTotal(9_999_999L, 1))
+        assertNull(FinanceMath.quantityTotal(0, 25))
+        assertNull(FinanceMath.quantityTotal(20, 0))
+        assertNull(FinanceMath.quantityTotal(20, 1_000_001))
+        assertNull(FinanceMath.quantityTotal(Long.MAX_VALUE, 2))
+        assertNull(FinanceMath.quantityTotal(1_000_000_000L, 1_000_000))
+    }
+
     @Test fun autonomy() {
         assertEquals(80L, FinanceMath.autonomyDays(320000L, 4000L))
         assertNull(FinanceMath.autonomyDays(0, 4000))

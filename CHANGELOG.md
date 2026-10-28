@@ -1,5 +1,14 @@
 # Alterações
 
+## 0.1.0-alpha.3 (2026-10-27) • versionCode 3
+
+- Redesenhado o editor de lançamentos com layout compacto, seções organizadas, local opcional e ação Salvar sempre disponível na base da janela.
+- Adicionado registro opcional por quantidade: **Latinhas** ou **Outros itens**, preço unitário e total exato calculado automaticamente.
+- Adicionadas categorias **Venda de latinhas** (receita) e **Bebidas** (despesa), com quantidade exibida no histórico.
+- Banco SQLite migra de v1 para v2 sem destruição; backup JSON novo v2 e importação retrocompatível v1, exportação CSV com detalhes dos itens.
+- Testes novos de multiplicação e limites; build Android/GitHub e validação visual em celular ainda pendentes.
+
+
 ## 0.1.0-alpha.2 (2026-10-27) • versionCode 2
 
 - Corrigido o erro de inicialização do GitHub Actions identificado no build 1: `setup-android@v3` tentava instalar o pacote SDK `tools`, não disponível.

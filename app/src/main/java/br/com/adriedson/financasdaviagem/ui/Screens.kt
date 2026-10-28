@@ -163,8 +163,12 @@ fun EntryRow(entry: Entry, onClick: (() -> Unit)?) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(entry.category, color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(listOf(entry.note, entry.city, entry.country).filter { it.isNotBlank() }.joinToString(" · ")
-                    .ifBlank { time }, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                val itemSummary = entry.quantity?.let { qty ->
+                    "$qty ${if (entry.itemKind == "cans") "latinhas" else "itens"}" +
+                        (entry.unitMinor?.let { " × ${FinanceMath.format(it, entry.currency)}" } ?: "")
+                }.orEmpty()
+                Text(listOf(itemSummary, entry.note, entry.city, entry.country)
+                    .filter { it.isNotBlank() }.joinToString(" · ").ifBlank { time }, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (originalDiffers) Text(FinanceMath.format(entry.originalMinor, entry.currency),
                     style = MaterialTheme.typography.labelSmall,
@@ -309,7 +313,7 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.2 · versionCode 2", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.3 · versionCode 3", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
         item { Text("Controle financeiro offline para a cicloviagem: receitas, despesas, categorias, saldo disponível, orçamento diário e autonomia estimada.") }
         item { SectionTitle("Privacidade e dados") }
