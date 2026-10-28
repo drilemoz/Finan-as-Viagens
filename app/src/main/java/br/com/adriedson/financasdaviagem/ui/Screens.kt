@@ -309,7 +309,7 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.1 · versionCode 1", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.2 · versionCode 2", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
         item { Text("Controle financeiro offline para a cicloviagem: receitas, despesas, categorias, saldo disponível, orçamento diário e autonomia estimada.") }
         item { SectionTitle("Privacidade e dados") }

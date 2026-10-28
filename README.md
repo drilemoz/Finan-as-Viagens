@@ -1,6 +1,6 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.1 / versionCode 1** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.2 / versionCode 2** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
 
 ## Funcionalidades implementadas
 
@@ -27,9 +27,9 @@ Aplicativo Android **0.1.0-alpha.1 / versionCode 1** para controle offline de fi
 
 **Android Studio**: abra esta pasta como projeto Gradle, configure JDK 17 e SDK Android 35, execute **Sync Project with Gradle Files** e `app > Tasks > build > assembleDebug`.
 
-**GitHub Actions**: publique esta pasta na raiz de um repositório no GitHub e execute **Actions → Gerar APK → Run workflow**. Workflow usa Gradle 8.13, JDK 17 e Android SDK 35, executa testes unitários e publica APK Debug em Artifacts. Se o build falhar, baixe o log, sem presumir sucesso.
+**GitHub Actions**: publique esta pasta na raiz de um repositório no GitHub e execute **Actions → Gerar APK → Run workflow**. Workflow usa Gradle 8.13, JDK 17, `android-actions/setup-android@v4` e Android SDK 35, executa testes unitários e publica APK Debug em Artifacts em caso de sucesso. Se o build falhar, baixe o log, sem presumir sucesso.
 
-> Este pacote **não inclui `gradle-wrapper.jar` nem um APK**. O workflow utiliza `gradle/actions/setup-gradle` para não exigir wrapper. O projeto fonte foi preparado para compilação, mas **não foi compilado no ambiente de geração** (sem Android SDK e Gradle/artefatos em cache). É preciso validar o primeiro build Android.
+> Este pacote **não inclui `gradle-wrapper.jar` nem um APK**. O workflow utiliza `gradle/actions/setup-gradle` para não exigir wrapper. O projeto fonte foi preparado para compilação, mas **não foi compilado no ambiente de geração** (sem Android SDK e Gradle/artefatos em cache). É preciso validar o novo build Android; os logs do build 1 mostraram falha antes da compilação em `setup-android@v3`, ao tentar instalar o pacote obsoleto `tools`. A alpha.2 corrige esse passo com v4 e `packages: platform-tools`.
 
 ## Privacidade e backup
 

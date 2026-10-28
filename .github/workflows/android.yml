@@ -15,8 +15,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Instalar Android SDK 35
+      # v3 tentava instalar o pacote Android SDK "tools", removido pelo Google.
+      # v4 usa apenas "platform-tools" e as command-line tools atuais.
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Instalar plataforma Android 35 e Build Tools
         run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -26,7 +32,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Financas-da-Viagem-v0.1.0-alpha.1-APK-e-relatorios
+          name: Financas-da-Viagem-v0.1.0-alpha.2-APK-e-relatorios
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/reports/tests/
