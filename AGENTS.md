@@ -17,3 +17,8 @@
 - Conta marcada como reserva não integra a autonomia; migração do saldo inicial legado não pode duplicar dinheiro.
 - Ao adicionar nova conta, preservar as contas e transferências nos backups, CSV e restauração; transações devem permanecer inteiras em centavos.
 
+
+- Backup JSON schema **5**: aceitar v1/v2/v3/v4; SQLite v5 com migração incremental 4→5, sem migração destrutiva.
+- Contas a pagar: cadastramento não deve alterar saldo. Pagamento gera exatamente uma despesa na mesma transação SQLite e vincula `paid_entry_id`; bloquear edição/exclusão isolada de despesas vinculadas.
+- Doações são receitas manuais e devem ser associadas a uma carteira; se a carteira é de reserva, não integram a autonomia.
+- Estoque de recicláveis é derivado exclusivamente de `recycling_events`; nunca inferir estoque de outros lançamentos financeiros.

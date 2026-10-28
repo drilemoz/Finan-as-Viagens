@@ -29,7 +29,7 @@ fun WalletScreen(
     accounts: List<WalletAccount>, transfers: List<WalletTransfer>, entries: List<Entry>,
     onSaveAccount: (WalletAccount) -> Unit,
     onTransfer: (WalletTransfer) -> Unit, onDeleteTransfer: (Long) -> Unit,
-    onExport: () -> Unit
+    onBills: () -> Unit, onExport: () -> Unit
 ) {
     var editing by remember { mutableStateOf<WalletAccount?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -68,6 +68,13 @@ fun WalletScreen(
                 OutlinedButton(onClick = { creating = true }, Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
                     Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(4.dp)); Text("Nova conta")
                 }
+            }
+        }
+        item {
+            OutlinedButton(onClick = onBills, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)) {
+                Icon(Icons.Outlined.ReceiptLong, null); Spacer(Modifier.width(8.dp))
+                Text("Contas a pagar e despesas")
             }
         }
         item { Text("Saldos por conta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }

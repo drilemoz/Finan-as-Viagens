@@ -41,11 +41,12 @@ private fun expenseTotals(entries: List<Entry>) = entries.filter { it.kind == "e
 @Composable
 fun DashboardScreen(
     entries: List<Entry>, settings: Preferences, accounts: List<WalletAccount>, transfers: List<WalletTransfer>,
-    onAddExpense: () -> Unit, onAddIncome: () -> Unit,
-    onHistory: () -> Unit, onSettings: () -> Unit
+    onAddExpense: () -> Unit, onAddIncome: () -> Unit, onAddDonation: () -> Unit,
+    onBills: () -> Unit, onHistory: () -> Unit, onSettings: () -> Unit
 ) {
     val income = entries.filter { it.kind == "income" }.sumOf { it.brlCents }
     val expense = entries.filter { it.kind == "expense" }.sumOf { it.brlCents }
+    val donationIncome = entries.filter { it.kind == "income" && it.category == "Doação" }.sumOf { it.brlCents }
     val balances = WalletMath.balances(accounts, entries, transfers)
     val balance = WalletMath.usable(accounts, balances)
     val reserve = WalletMath.reserve(accounts, balances)
@@ -127,9 +128,35 @@ fun DashboardScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onAddIncome, modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(16.dp)) {
-                Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(8.dp)); Text("Adicionar receita")
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                OutlinedButton(onClick = onAddIncome, modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                    Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(3.dp)); Text("Receita")
+                }
+                OutlinedButton(onClick = onAddDonation, modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                    Icon(Icons.Outlined.VolunteerActivism, null); Spacer(Modifier.width(3.dp)); Text("Doação")
+                }
+            }
+        }
+        item {
+            TextButton(onClick = onBills, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.EventNote, null); Spacer(Modifier.width(8.dp))
+                Text("Gerenciar contas a pagar e despesas")
+            }
+        }
+        if (donationIncome > 0L) {
+            item {
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(15.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Text("Doações recebidas", style = MaterialTheme.typography.labelLarge)
+                        Text(FinanceMath.format(donationIncome), style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text("Valor já incluído no saldo disponível; não somar novamente.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
         item {
@@ -308,9 +335,11 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.5 · versionCode 5", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.6 · versionCode 6", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
-        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas, transferências, receitas, despesas, latinhas, cobre, orçamento diário e autonomia estimada.") }
+        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, orçamento diário e autonomia estimada.") }
+        item { SectionTitle("Novidades da alpha.6") }
+        item { Text("• Usar todas na venda de recicláveis: preenche o estoque atual.\n• Doação como receita com atalho no painel.\n• Contas a pagar com vencimento e pagamento integrado a Carteiras.") }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }

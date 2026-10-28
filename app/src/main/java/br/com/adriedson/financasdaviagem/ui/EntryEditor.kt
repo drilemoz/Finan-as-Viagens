@@ -50,12 +50,14 @@ private fun ChoiceMenu(label: String, selection: String, choices: List<String>, 
 @Composable
 fun EntryEditor(
     existing: Entry?, initialKind: String, accounts: List<WalletAccount>,
+    initialCategory: String? = null,
     onDismiss: () -> Unit, onSave: (Entry) -> Unit, onDelete: ((Entry) -> Unit)
 ) {
     var accountId by remember(existing?.id, accounts) { mutableLongStateOf(existing?.accountId ?: accounts.firstOrNull { !it.isReserve }?.id ?: 1L) }
     var kind by remember(existing?.id) { mutableStateOf(existing?.kind ?: initialKind) }
-    var category by remember(existing?.id) {
-        mutableStateOf(existing?.category ?: if (initialKind == "income") incomeCategories.first() else expenseCategories.first())
+    var category by remember(existing?.id, initialKind, initialCategory) {
+        mutableStateOf(existing?.category ?: initialCategory ?:
+            if (initialKind == "income") incomeCategories.first() else expenseCategories.first())
     }
     var amount by remember(existing?.id) {
         mutableStateOf(existing?.let { FinanceMath.decimalInput(it.originalMinor, FinanceMath.digits(it.currency)) } ?: "")
@@ -177,7 +179,6 @@ fun EntryEditor(
                             supportingText = { Text("Informe a cotação real usada; sem atualização automática.") })
                     }
 
-                    WalletAccountPicker("Conta utilizada", accounts, accountId) { accountId = it }
 
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(18.dp)) {

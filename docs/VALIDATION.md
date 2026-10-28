@@ -42,3 +42,11 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Verificar backup JSON schema 4 (exportação/restore) e importação dos formatos 1, 2 e 3.
 - Conferir edição de receitas/despesas e escolha de conta de recebimento de vendas.
 - A compilação Gradle/Android e o teste de interface em aparelho ainda não foram executados neste ambiente.
+
+## alpha.6 (2026-10-27)
+
+- Verificar migração SQLite 4→5 e cadeia 1/2/3→5, mantendo estoque, saldos, carteiras e lançamentos.
+- Validar `Usar todas` (80 latinhas → 1143 g estimados → R$ 6,86 na cotação de R$ 6/kg), evitando venda maior que estoque.
+- Verificar doações na conta física, banco e reserva, sem duplicação do saldo.
+- Verificar contas a pagar pendentes, vencidas e pagas; pagamento atômico vinculado e proteção do histórico; backups v1–v5; exportação CSV.
+- Build Gradle/Android e teste de interface em aparelho ainda pendentes.

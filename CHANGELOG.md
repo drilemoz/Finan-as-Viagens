@@ -1,3 +1,13 @@
+## 0.1.0-alpha.6 (2026-10-27) • versionCode 6
+
+- Botão **Usar todas** na venda de latinhas e cobre, preenchendo a quantidade em estoque sem vender automaticamente.
+- Atalho **Doação** no painel, receita categorizada e saldo em carteira com resumo sem dupla contagem.
+- Tela **Contas e despesas** acessível por Carteiras e pelo painel: contas a pagar com datas de vencimento, edição/exclusão de pendentes, pagamento ligado a uma despesa única, categorias e carteira de pagamento.
+- Migração SQLite 4→5 aditiva, backup JSON schema 5 retrocompatível com 1/2/3/4 e exportação CSV de contas.
+- Proteção contra edição manual de despesas vinculadas a pagamentos de contas.
+- Corrigida duplicação visual do seletor de carteira no formulário de novo lançamento.
+- Testes locais de sintaxe, core, datas e SQLite; compilação Android GitHub/execução em aparelho pendente.
+
 # Alterações
 
 ## 0.1.0-alpha.5 (2026-10-27) • versionCode 5

@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import br.com.adriedson.financasdaviagem.core.BillMath
 import br.com.adriedson.financasdaviagem.core.FinanceMath
 import br.com.adriedson.financasdaviagem.core.RecyclingMath
 import org.json.JSONArray
@@ -61,6 +62,18 @@ data class WalletTransfer(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+/** Pending bill does not change the financial balance. Paying it creates one linked expense. */
+data class Bill(
+    val id: Long = 0,
+    val title: String,
+    val category: String = "Outros",
+    val amountCents: Long,
+    val dueDate: String,
+    val note: String = "",
+    val paidEntryId: Long? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class Preferences(
     val initialCents: Long = 0,
     val reserveCents: Long = 0,
@@ -73,7 +86,7 @@ data class Preferences(
 val expenseCategories = listOf("Alimentação", "Bebidas", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
 val incomeCategories = listOf("Economias", "Venda de latinhas", "Trabalho", "Doação", "Reembolso", "Outras receitas")
 
-private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appContext, "financas_viagem.db", null, 4) {
+private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appContext, "financas_viagem.db", null, 5) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +108,20 @@ private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appCo
         db.execSQL("CREATE INDEX idx_entries_time ON entries(created_at DESC)")
         createRecycling(db)
         createWalletTables(db)
+        createBills(db)
+    }
+    private fun createBills(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
+            due_date TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            paid_entry_id INTEGER UNIQUE,
+            created_at INTEGER NOT NULL
+        )""")
+        db.execSQL("CREATE INDEX idx_bills_due ON bills(due_date ASC, id DESC)")
     }
     private fun createRecycling(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE recycling_events (
@@ -152,7 +179,8 @@ private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appCo
             db.execSQL("ALTER TABLE entries ADD COLUMN account_id INTEGER NOT NULL DEFAULT 1")
             createWalletTables(db)
         }
-        if (newVersion != 4 || oldVersion !in 1..3) error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
+        if (oldVersion < 5) createBills(db)
+        if (newVersion != 5 || oldVersion !in 1..4) error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
     }
 }
 
@@ -222,11 +250,20 @@ class FinanceRepository(context: Context) {
         writable.rawQuery("SELECT 1 FROM recycling_events WHERE finance_entry_id=? LIMIT 1", arrayOf(id.toString()))
             .use { it.moveToFirst() }
 
+    private fun isBillEntry(writable: SQLiteDatabase, id: Long): Boolean =
+        writable.rawQuery("SELECT 1 FROM bills WHERE paid_entry_id=? LIMIT 1", arrayOf(id.toString()))
+            .use { it.moveToFirst() }
+
+    fun isManagedEntry(id: Long): Boolean {
+        val read = db.readableDatabase
+        return isLinkedEntry(read, id) || isBillEntry(read, id)
+    }
+
     fun save(e: Entry) {
         verify(e)
         require(accounts().any { it.id == e.accountId }) { "Conta inexistente" }
-        if (e.id > 0) require(!isLinkedEntry(db.writableDatabase, e.id)) {
-            "Receita de reciclagem gerenciada exclusivamente na aba Recicláveis"
+        if (e.id > 0) require(!isManagedEntry(e.id)) {
+            "Lançamento vinculado: gerencie-o na aba Recicláveis ou em Contas a pagar"
         }
         if (e.id <= 0) {
             check(db.writableDatabase.insertOrThrow("entries", null, values(e)) > 0)
@@ -237,7 +274,7 @@ class FinanceRepository(context: Context) {
 
     fun delete(id: Long): Int {
         val writable = db.writableDatabase
-        require(!isLinkedEntry(writable, id)) { "Exclua a venda pela aba Recicláveis" }
+        require(!isManagedEntry(id)) { "Lançamento vinculado: gerencie pela origem" }
         return writable.delete("entries", "id=?", arrayOf(id.toString()))
     }
 
@@ -307,6 +344,81 @@ class FinanceRepository(context: Context) {
                 "Saldo insuficiente no destino para desfazer a transferência"
             }
             check(w.delete("wallet_transfers", "id=?", arrayOf(id.toString())) == 1)
+            w.setTransactionSuccessful()
+        } finally { w.endTransaction() }
+    }
+
+    private fun validateBill(b: Bill) {
+        require(b.title.trim() == b.title && b.title.length in 2..100 &&
+            b.title.none { it.code < 32 || it.code == 127 })
+        require(b.category in expenseCategories && b.note.length <= 180)
+        require(b.amountCents in 1..999_999_999_999L)
+        require(BillMath.isValidIso(b.dueDate)) { "Vencimento inválido" }
+        require(b.createdAt > 0 && b.createdAt <= System.currentTimeMillis() + 86_400_000L)
+    }
+
+    private fun billValues(b: Bill) = ContentValues().apply {
+        put("title", b.title); put("category", b.category); put("amount_cents", b.amountCents)
+        put("due_date", b.dueDate); put("note", b.note)
+        put("paid_entry_id", b.paidEntryId); put("created_at", b.createdAt)
+    }
+
+    fun bills(): List<Bill> {
+        val list = mutableListOf<Bill>()
+        db.readableDatabase.rawQuery("""SELECT id,title,category,amount_cents,due_date,note,paid_entry_id,created_at
+            FROM bills ORDER BY (paid_entry_id IS NOT NULL),due_date ASC,id DESC""", null).use { c ->
+            while (c.moveToNext()) list.add(Bill(c.getLong(0), c.getString(1), c.getString(2),
+                c.getLong(3), c.getString(4), c.getString(5),
+                if (c.isNull(6)) null else c.getLong(6), c.getLong(7)))
+        }
+        return list
+    }
+
+    fun saveBill(b: Bill) {
+        validateBill(b)
+        require(b.paidEntryId == null) { "Contas pagas não podem ser editadas" }
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            if (b.id == 0L) check(w.insertOrThrow("bills", null, billValues(b)) > 0)
+            else {
+                val existing = bills().singleOrNull { it.id == b.id } ?: error("Conta inexistente")
+                require(existing.paidEntryId == null) { "Conta já paga" }
+                check(w.update("bills", billValues(b.copy(createdAt = existing.createdAt)), "id=?", arrayOf(b.id.toString())) == 1)
+            }
+            w.setTransactionSuccessful()
+        } finally { w.endTransaction() }
+    }
+
+    fun deleteBill(id: Long) {
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            val b = bills().singleOrNull { it.id == id } ?: error("Conta inexistente")
+            require(b.paidEntryId == null) { "Contas pagas não podem ser excluídas: a despesa já foi registrada" }
+            check(w.delete("bills", "id=?", arrayOf(id.toString())) == 1)
+            w.setTransactionSuccessful()
+        } finally { w.endTransaction() }
+    }
+
+    /** Atomic payment. No entry is produced while the bill is only pending. */
+    fun payBill(id: Long, accountId: Long) {
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            val bill = bills().singleOrNull { it.id == id } ?: error("Conta inexistente")
+            require(bill.paidEntryId == null) { "Esta conta já foi paga" }
+            require(accounts().any { it.id == accountId }) { "Carteira não encontrada" }
+            val now = System.currentTimeMillis()
+            val e = Entry(kind = "expense", category = bill.category,
+                note = "Conta: ${bill.title}" + if (bill.note.isBlank()) "" else " · ${bill.note}",
+                originalMinor = bill.amountCents, brlCents = bill.amountCents,
+                createdAt = now, accountId = accountId)
+            verify(e)
+            val entryId = w.insertOrThrow("entries", null, values(e))
+            check(entryId > 0L)
+            val update = ContentValues().apply { put("paid_entry_id", entryId) }
+            check(w.update("bills", update, "id=? AND paid_entry_id IS NULL", arrayOf(id.toString())) == 1)
             w.setTransactionSuccessful()
         } finally { w.endTransaction() }
     }
@@ -411,7 +523,7 @@ class FinanceRepository(context: Context) {
     }
 
     fun createBackup(): String {
-        val root = JSONObject().put("schemaVersion", 4).put("createdAt", System.currentTimeMillis())
+        val root = JSONObject().put("schemaVersion", 5).put("createdAt", System.currentTimeMillis())
         val s = settings()
         root.put("settings", JSONObject().put("initialCents", s.initialCents).put("reserveCents", s.reserveCents)
             .put("dailyBudgetCents", s.dailyBudgetCents).put("themeMode", s.themeMode)
@@ -440,20 +552,26 @@ class FinanceRepository(context: Context) {
         val transfersData = JSONArray()
         transfers().forEach { t -> transfersData.put(JSONObject().put("id", t.id).put("fromId", t.fromId)
             .put("toId", t.toId).put("cents", t.cents).put("note", t.note).put("createdAt", t.createdAt)) }
+        val billsData = JSONArray()
+        bills().forEach { b -> billsData.put(JSONObject().put("id", b.id).put("title", b.title)
+            .put("category", b.category).put("amountCents", b.amountCents).put("dueDate", b.dueDate)
+            .put("note", b.note).put("paidEntryId", b.paidEntryId).put("createdAt", b.createdAt)) }
         return root.put("entries", data).put("recyclingEvents", recycling)
-            .put("accounts", accountsData).put("transfers", transfersData).toString(2)
+            .put("accounts", accountsData).put("transfers", transfersData)
+            .put("bills", billsData).toString(2)
     }
 
     data class Backup(
         val settings: Preferences, val entries: List<Entry>, val recyclingEvents: List<RecyclingEvent>,
-        val accounts: List<WalletAccount>, val transfers: List<WalletTransfer>
+        val accounts: List<WalletAccount>, val transfers: List<WalletTransfer>,
+        val bills: List<Bill> = emptyList()
     )
 
     fun parseBackup(content: String): Backup {
         require(content.length <= 4_000_000) { "Arquivo muito grande" }
         val root = JSONObject(content)
         val schema = root.getInt("schemaVersion")
-        require(schema in 1..4) { "Versão de backup incompatível" }
+        require(schema in 1..5) { "Versão de backup incompatível" }
         val pref = root.getJSONObject("settings")
         val settings = Preferences(pref.getLong("initialCents"), pref.getLong("reserveCents"),
             pref.getLong("dailyBudgetCents"), pref.getString("themeMode"),
@@ -521,8 +639,19 @@ class FinanceRepository(context: Context) {
                     o.getLong("cents"), o.getString("note"), o.getLong("createdAt"))
             }
         } else emptyList()
+        val bills = if (schema >= 5) {
+            val array = root.getJSONArray("bills")
+            require(array.length() <= 10000) { "Contas demais" }
+            (0 until array.length()).map { i ->
+                val o = array.getJSONObject(i)
+                Bill(o.getLong("id"), o.getString("title"), o.getString("category"),
+                    o.getLong("amountCents"), o.getString("dueDate"), o.getString("note"),
+                    if (o.isNull("paidEntryId")) null else o.getLong("paidEntryId"), o.getLong("createdAt"))
+            }
+        } else emptyList()
         validateWalletData(ac, items, tx)
-        return Backup(settings, items, recycling, ac, tx)
+        validateBills(bills, items, recycling)
+        return Backup(settings, items, recycling, ac, tx, bills)
     }
 
     private fun trueIfSale(event: RecyclingEvent): Boolean = event.action == "sale"
@@ -542,14 +671,30 @@ class FinanceRepository(context: Context) {
         br.com.adriedson.financasdaviagem.core.WalletMath.balances(accounts, entries, transfers)
     }
 
+    private fun validateBills(bills: List<Bill>, entries: List<Entry>, recycling: List<RecyclingEvent>) {
+        bills.forEach { validateBill(it); require(it.id > 0) }
+        require(bills.map { it.id }.distinct().size == bills.size) { "Contas duplicadas" }
+        val linked = bills.mapNotNull { it.paidEntryId }
+        require(linked.distinct().size == linked.size) { "Despesa vinculada mais de uma vez" }
+        require(linked.none { id -> recycling.any { it.financeEntryId == id } })
+        val byId = entries.associateBy { it.id }
+        bills.filter { it.paidEntryId != null }.forEach { b ->
+            val e = byId[b.paidEntryId] ?: error("Despesa da conta paga ausente no backup")
+            require(e.kind == "expense" && e.category == b.category && e.currency == "BRL" &&
+                e.brlCents == b.amountCents && e.originalMinor == b.amountCents)
+        }
+    }
+
     fun restore(backup: Backup) {
         backup.entries.forEach { verify(it) }
         backup.recyclingEvents.forEach { validateRecycle(it, allowLinked = trueIfSale(it)) }
         stock(backup.recyclingEvents)
         validateWalletData(backup.accounts, backup.entries, backup.transfers)
+        validateBills(backup.bills, backup.entries, backup.recyclingEvents)
         val writable = db.writableDatabase
         writable.beginTransaction()
         try {
+            writable.delete("bills", null, null)
             writable.delete("recycling_events", null, null)
             writable.delete("entries", null, null)
             writable.delete("wallet_transfers", null, null)
@@ -574,6 +719,9 @@ class FinanceRepository(context: Context) {
             }
             backup.recyclingEvents.forEach { e ->
                 writable.insertOrThrow("recycling_events", null, eventValues(e).apply { put("id", e.id) })
+            }
+            backup.bills.forEach { b ->
+                writable.insertOrThrow("bills", null, billValues(b).apply { put("id", b.id) })
             }
             // O banco é transacional. As preferências usam SharedPreferences e
             // não possuem atomicidade conjunta em caso de interrupção do processo.
@@ -633,6 +781,24 @@ class FinanceRepository(context: Context) {
                     e.financeEntryId?.toString() ?: "", e.note, e.city, e.country)
                 append(cols.joinToString(";") { esc(it) }); append("\r\n")
             }
+        }
+    }
+
+    fun exportBillsCsv(): String = buildString {
+        append("vencimento;descricao;categoria;valor_brl;status;data_pagamento;conta_pagamento;observacao\r\n")
+        val entriesById = all().associateBy { it.id }
+        val names = accounts().associate { it.id to it.name }
+        fun esc(value: String): String = "\"" +
+            (if (Regex("^[=+@-]").containsMatchIn(value.trimStart())) "'" + value else value)
+                .replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
+        bills().forEach { bill ->
+            val entry = bill.paidEntryId?.let { entriesById[it] }
+            append(listOf(BillMath.displayDate(bill.dueDate), bill.title, bill.category,
+                FinanceMath.decimalInput(bill.amountCents), if (entry == null) "Pendente" else "Pago",
+                entry?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.forLanguageTag("pt-BR"))
+                    .format(java.util.Date(it.createdAt)) } ?: "",
+                entry?.let { names[it.accountId] } ?: "", bill.note).joinToString(";") { esc(it) })
+            append("\r\n")
         }
     }
 

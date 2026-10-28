@@ -234,10 +234,25 @@ private fun RecyclingEditor(action: String, config: Preferences, stockCans: Long
                     }
                     Text(if (material == "cans") "Estoque: $stockCans latinhas" else "Estoque: ${RecyclingMath.kilograms(stockCopperGrams)} kg",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(value = unitsInput, onValueChange = { if (it.length < 20) { unitsInput = it; error = "" } },
-                        label = { Text(if (material == "cans") "Quantidade de latinhas" else "Peso de cobre (kg)") },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = if (material == "cans") KeyboardType.Number else KeyboardType.Decimal))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = unitsInput, onValueChange = { if (it.length < 20) { unitsInput = it; error = "" } },
+                            label = { Text(if (material == "cans") "Quantidade de latinhas" else "Peso de cobre (kg)") },
+                            modifier = Modifier.weight(1f), singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = if (material == "cans") KeyboardType.Number else KeyboardType.Decimal))
+                        if (action == "sale") {
+                            val available = if (material == "cans") stockCans else stockCopperGrams
+                            OutlinedButton(onClick = {
+                                unitsInput = if (material == "cans") stockCans.toString()
+                                    else RecyclingMath.kilograms(stockCopperGrams)
+                                // Measured kilograms from a scale take precedence. Leave this blank for
+                                // an estimated cans mass unless the user entered an actual weighing.
+                                error = ""
+                            }, enabled = available > 0, contentPadding = PaddingValues(horizontal = 9.dp)) {
+                                Text("Usar todas", maxLines = 2)
+                            }
+                        }
+                    }
                     if (action == "adjust") {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = negativeAdjustment, onCheckedChange = { negativeAdjustment = it })

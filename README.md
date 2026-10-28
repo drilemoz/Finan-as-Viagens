@@ -1,6 +1,15 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.5 / versionCode 5** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.6 / versionCode 6** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Novidade na alpha.6: Usar todas, Doações e Contas a pagar
+
+- Na aba **Recicláveis > Vender**, o botão **Usar todas** preenche de uma vez o estoque atual de **latinhas** ou de **cobre** no campo de quantidade/peso. O cálculo usa 70 latinhas/kg e R$ 6,00/kg como parâmetros *estimados* e editáveis para latinhas; o cobre exige preço por kg informado. A venda só aumenta o dinheiro disponível após confirmar o recebimento, e não deve ser duplicada como receita manual.
+- A tela de venda já mostrava `Estoque: N latinhas` porque lia `recycling_events` (coletas menos vendas e ajustes). **Lançamentos financeiros manuais de latinhas não alteram esse estoque**, evitando duplicações e suposições sobre compras/vendas antigas.
+- O painel ganhou ação rápida **Doação**, que abre lançamento do tipo `Receita` com categoria **Doação** pré-selecionada. É possível escolher carteira (dinheiro físico/Banco Pix etc.). Doações recebidas integram saldo disponível, exceto quando depositadas na conta de reserva. Resumo de doações no painel sem somá-las duas vezes.
+- A aba **Carteiras** e o painel oferecem acesso a **Contas a pagar**: cadastrar/editar/excluir contas pendentes com vencimento, categoria, descrição e valor; listar pendentes, pagas e vencidas; escolher carteira ao confirmar pagamento. Pagamento gera **uma despesa vinculada** na mesma transação SQLite e não permite pagar duas vezes. Contas pagas são preservadas no histórico e não podem ser excluídas isoladamente.
+- **SQLite v5**: migração aditiva 4→5, cria tabela `bills`; versões 1/2/3 também migram sucessivamente. **Backup JSON schema 5** inclui contas a pagar e aceita os backups 1–4, em que contas a pagar começam vazias. Exportação CSV independente para contas a pagar.
+- Corrigida duplicidade do seletor de carteira no formulário geral. Continuam disponíveis temas claro, escuro e do sistema, uso offline e cálculos monetários em centavos inteiros.
 
 ## Novidade na alpha.5: carteiras e contas 💰
 
@@ -20,7 +29,7 @@ Aplicativo Android **0.1.0-alpha.5 / versionCode 5** para controle offline de fi
 - A coleta só aumenta o estoque. Uma **venda após recebimento** diminui o estoque e cria exatamente **uma receita na categoria Trabalho** na mesma transação SQLite; ela já integra o saldo geral. Não registrar a mesma venda pelo editor financeiro comum, para evitar receita duplicada.
 - O valor potencial das latinhas em estoque é **estimativa não recebida**, separada do dinheiro real. O saldo financeiro não inclui materiais ainda não vendidos.
 - Receitas originadas de vendas são protegidas contra edição/exclusão isolada no histórico financeiro: administre-as na aba Recicláveis. Exclusão de venda desfaz estoque e receita na mesma transação.
-- **SQLite 4** com migrações aditivas 1→2→3→4, sem apagar dados. **Backup JSON schema 4** inclui eventos, vínculos com receitas, contas, transferências e parâmetros, e continua importando backups schema 1/2/3. **CSV de reciclagem** separado do CSV financeiro.
+- **SQLite 5** com migrações aditivas 1→2→3→4→5, sem apagar dados. **Backup JSON schema 5** inclui eventos, vínculos com receitas, contas, transferências e parâmetros, e continua importando backups schema 1/2/3/4. **CSV de reciclagem** separado do CSV financeiro.
 
 ## Funcionalidades implementadas
 
@@ -81,10 +90,14 @@ A cada alteração, incrementar versão `0.1.0-alpha.N`, `versionCode` e referê
 
 A imagem enviada está preservada em `docs/layout_referencia.jpg` para orientar ajustes futuros. O layout é responsivo e os valores são calculados com dados reais, não copiados do desenho.
 
-## Migrações históricas e alpha.5
+## Migrações históricas e alpha.6
 
-O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. Na alpha.2, o backup JSON usava schema 2. A versão atual gera schema 4 e continua aceitando schemas 1, 2 e 3.
+O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. Na alpha.2, o backup JSON usava schema 2. A versão atual gera schema 5 e continua aceitando schemas 1, 2, 3 e 4.
 
 ### SQLite v4 e backups
 
 Migração aditiva 3→4 cria contas, transferências e adiciona `account_id` ao histórico. Ao migrar, dinheiro físico recebe o antigo saldo inicial menos a reserva, a reserva recebe o valor reservado e Banco / Pix inicia zerado. Todas as entradas históricas ficam atribuídas à conta Dinheiro físico. Backups antigos v1/v2/v3 são convertidos para esse modelo durante a restauração. Não desinstale antes de validar backup.
+
+### SQLite v5 e contas a pagar
+
+Migração 4→5 cria `bills` e índice por vencimento, sem alterações destrutivas em carteiras, entradas e reciclagem. A despesa da conta só é criada no pagamento confirmado e vinculada por `paid_entry_id` único. O histórico não permite editar ou apagar uma despesa vinculada; contas pagas continuam registradas. Para alterar uma conta já paga, o procedimento seguro de estorno deverá ser definido em versão futura. Backup schema 5 inclui esse vínculo e valida referência/valor antes de restaurar.
