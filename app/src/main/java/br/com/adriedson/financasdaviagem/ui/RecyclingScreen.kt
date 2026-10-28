@@ -22,6 +22,7 @@ import androidx.compose.ui.window.DialogProperties
 import br.com.adriedson.financasdaviagem.core.FinanceMath
 import br.com.adriedson.financasdaviagem.core.RecyclingMath
 import br.com.adriedson.financasdaviagem.data.Preferences
+import br.com.adriedson.financasdaviagem.data.WalletAccount
 import br.com.adriedson.financasdaviagem.data.RecyclingEvent
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,8 +34,8 @@ private fun qtyLabel(material: String, units: Long): String =
 
 @Composable
 fun RecyclingScreen(
-    events: List<RecyclingEvent>, config: Preferences,
-    onAdd: (RecyclingEvent, (Boolean) -> Unit) -> Unit,
+    events: List<RecyclingEvent>, config: Preferences, accounts: List<WalletAccount>,
+    onAdd: (RecyclingEvent, Long, (Boolean) -> Unit) -> Unit,
     onDelete: (Long) -> Unit,
     onSaveConfig: (Preferences) -> Unit, onExport: () -> Unit
 ) {
@@ -171,8 +172,8 @@ fun RecyclingScreen(
     }
 
     openAction?.let { action ->
-        RecyclingEditor(action, config, cans, copper, onDismiss = { openAction = null }, onSave = { event, complete ->
-            onAdd(event, complete)
+        RecyclingEditor(action, config, cans, copper, accounts, onDismiss = { openAction = null }, onSave = { event, accountId, complete ->
+            onAdd(event, accountId, complete)
         })
     }
     remove?.let { selected ->
@@ -191,7 +192,9 @@ fun RecyclingScreen(
 
 @Composable
 private fun RecyclingEditor(action: String, config: Preferences, stockCans: Long, stockCopperGrams: Long,
-                            onDismiss: () -> Unit, onSave: (RecyclingEvent, (Boolean) -> Unit) -> Unit) {
+                            accounts: List<WalletAccount>, onDismiss: () -> Unit,
+                            onSave: (RecyclingEvent, Long, (Boolean) -> Unit) -> Unit) {
+    var receivingAccount by remember(action) { mutableLongStateOf(accounts.firstOrNull { !it.isReserve }?.id ?: 1L) }
     var material by remember(action) { mutableStateOf("cans") }
     var unitsInput by remember(action, material) { mutableStateOf("") }
     var measuredKg by remember(action, material) { mutableStateOf("") }
@@ -244,6 +247,7 @@ private fun RecyclingEditor(action: String, config: Preferences, stockCans: Long
                             style = MaterialTheme.typography.bodySmall)
                     }
                     if (action == "sale") {
+                        WalletAccountPicker("Receber em", accounts, receivingAccount) { receivingAccount = it }
                         if (material == "cans") {
                             OutlinedTextField(measuredKg, { if (it.length < 20) measuredKg = it },
                                 label = { Text("Peso medido (kg, opcional)") }, modifier = Modifier.fillMaxWidth(),
@@ -291,7 +295,7 @@ private fun RecyclingEditor(action: String, config: Preferences, stockCans: Long
                             estimatedWeight = action == "sale" && material == "cans" && measuredKg.isBlank(),
                             priceCentsKg = if (action == "sale") price else null,
                             receivedCents = if (action == "sale") total else null,
-                            note = note.trim(), city = city.trim(), country = country.trim())) { ok ->
+                            note = note.trim(), city = city.trim(), country = country.trim()), receivingAccount) { ok ->
                             saving = false
                             if (ok) onDismiss() else error = "Falha ao salvar. Confira o estoque e tente novamente."
                         }

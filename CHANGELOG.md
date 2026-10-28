@@ -1,5 +1,15 @@
 # Alterações
 
+## 0.1.0-alpha.5 (2026-10-27) • versionCode 5
+
+- Aba Carteiras com Dinheiro físico, Banco / Pix, Reserva de emergência, novas contas e saldos iniciais.
+- Lançamentos financeiros e recebimentos de reciclagem associados a carteiras.
+- Transferências sem gerar receitas/despesas, com histórico, controles de saldo e CSV próprio.
+- Migração SQLite 3→4 aditiva, cálculo por conta em centavos, dashboard exclui contas de reserva.
+- Backup JSON schema 4 com carteiras e transferências, importação de v1/v2/v3/v4, preservação dos lançamentos históricos.
+- Modo claro, escuro, configurações, recibos e funcionalidades da alpha.4 mantidos.
+- Compilação Android e testes de upgrade em celular ainda pendentes.
+
 ## 0.1.0-alpha.4 (2026-10-27) • versionCode 4
 
 - Nova aba inferior **Recicláveis** com apenas latinhas de alumínio e cobre, adequados ao transporte na bicicleta.

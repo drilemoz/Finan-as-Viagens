@@ -12,5 +12,8 @@
 - Reciclagem: apenas `cans` e `copper`; nunca misturar material coletado/estimado com dinheiro recebido.
 - Parâmetros iniciais são 70 latinhas/kg estimados e R$ 6,00/kg, ambos configuráveis. Cobre não tem preço implícito.
 - Evento de venda e receita `Trabalho` vinculada devem ser criados ou excluídos na **mesma transação SQLite**. Proteger lançamentos vinculados no editor geral.
-- Manter backup JSON schema 3 e compatibilidade com v1/v2, migração SQLite 1→2→3 aditiva e exportação CSV operacional.
+- Backup atual JSON schema 4: preservar importação de v1, v2 e v3; SQLite v4 com migração 1→2→3→4 aditiva.
+- Toda receita/despesa deve apontar para conta válida. Transferências não criam receitas/despesas.
+- Conta marcada como reserva não integra a autonomia; migração do saldo inicial legado não pode duplicar dinheiro.
+- Ao adicionar nova conta, preservar as contas e transferências nos backups, CSV e restauração; transações devem permanecer inteiras em centavos.
 

@@ -18,6 +18,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.adriedson.financasdaviagem.core.FinanceMath
+import br.com.adriedson.financasdaviagem.core.WalletMath
+import br.com.adriedson.financasdaviagem.data.WalletAccount
+import br.com.adriedson.financasdaviagem.data.WalletTransfer
 import br.com.adriedson.financasdaviagem.data.Entry
 import br.com.adriedson.financasdaviagem.data.Preferences
 import java.text.SimpleDateFormat
@@ -37,13 +40,15 @@ private fun expenseTotals(entries: List<Entry>) = entries.filter { it.kind == "e
 
 @Composable
 fun DashboardScreen(
-    entries: List<Entry>, settings: Preferences,
+    entries: List<Entry>, settings: Preferences, accounts: List<WalletAccount>, transfers: List<WalletTransfer>,
     onAddExpense: () -> Unit, onAddIncome: () -> Unit,
     onHistory: () -> Unit, onSettings: () -> Unit
 ) {
     val income = entries.filter { it.kind == "income" }.sumOf { it.brlCents }
     val expense = entries.filter { it.kind == "expense" }.sumOf { it.brlCents }
-    val balance = settings.initialCents + income - expense - settings.reserveCents
+    val balances = WalletMath.balances(accounts, entries, transfers)
+    val balance = WalletMath.usable(accounts, balances)
+    val reserve = WalletMath.reserve(accounts, balances)
     val today = entries.filter { it.kind == "expense" && it.createdAt >= todayStart() }.sumOf { it.brlCents }
     val autonomy = FinanceMath.autonomyDays(balance, settings.dailyBudgetCents)
     val categories = expenseTotals(entries)
@@ -73,7 +78,7 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(FinanceMath.format(balance), fontSize = 34.sp, fontWeight = FontWeight.Bold,
                         color = if (balance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                    Text("Reserva de emergência separada: ${FinanceMath.format(settings.reserveCents)}",
+                    Text("Reserva de emergência separada: ${FinanceMath.format(reserve)}",
                         color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -135,7 +140,7 @@ fun DashboardScreen(
             }
         }
         if (entries.isEmpty()) {
-            item { Text("Cadastre seu saldo inicial nas Configurações e depois registre as movimentações.",
+            item { Text("Defina os saldos iniciais na aba Carteiras e depois registre suas movimentações.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(entries.take(4), key = { it.id }) { entry -> EntryRow(entry, null) }
@@ -244,10 +249,8 @@ private fun SettingsTile(icon: ImageVector, label: String, description: String, 
 @Composable
 fun SettingsScreen(
     settings: Preferences, onSave: (Preferences) -> Unit,
-    onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit
+    onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit, onAccounts: () -> Unit
 ) {
-    var initial by remember(settings.initialCents) { mutableStateOf(FinanceMath.decimalInput(settings.initialCents)) }
-    var reserve by remember(settings.reserveCents) { mutableStateOf(FinanceMath.decimalInput(settings.reserveCents)) }
     var budget by remember(settings.dailyBudgetCents) { mutableStateOf(FinanceMath.decimalInput(settings.dailyBudgetCents)) }
     var error by remember { mutableStateOf("") }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
@@ -263,14 +266,9 @@ fun SettingsScreen(
             }
         }
         item { SectionTitle("Planejamento financeiro") }
-        item { Text("Valores em reais. Saldo disponível = saldo inicial + receitas − despesas − reserva.",
+        item { Text("O saldo inicial e a reserva são gerenciados por conta na aba Carteiras.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-        item { OutlinedTextField(value = initial, onValueChange = { initial = it },
-            label = { Text("Saldo inicial (R$)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)) }
-        item { OutlinedTextField(value = reserve, onValueChange = { reserve = it },
-            label = { Text("Reserva de emergência (R$)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)) }
+        item { SettingsTile(Icons.Outlined.AccountBalanceWallet, "Carteiras e reserva", "Definir saldos iniciais e transferir entre contas", onAccounts) }
         item { OutlinedTextField(value = budget, onValueChange = { budget = it },
             label = { Text("Orçamento diário (R$)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)) }
@@ -278,15 +276,12 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall) }
         item {
             Button(onClick = {
-                val initialCents = FinanceMath.parseAmount(initial)
-                val reserveCents = FinanceMath.parseAmount(reserve)
                 val budgetCents = FinanceMath.parseAmount(budget)
-                if (initialCents == null || reserveCents == null || budgetCents == null) {
+                if (budgetCents == null) {
                     error = "Digite números válidos, sem separador de milhar (ex.: 3200,00)."
                 } else {
                     error = ""
-                    onSave(settings.copy(initialCents = initialCents, reserveCents = reserveCents,
-                        dailyBudgetCents = budgetCents))
+                    onSave(settings.copy(dailyBudgetCents = budgetCents))
                 }
             }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
                 Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(7.dp)); Text("Salvar valores")
@@ -313,9 +308,9 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.4 · versionCode 4", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.5 · versionCode 5", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
-        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: receitas, despesas, coleta de latinhas e cobre, vendas, estoque, orçamento diário e autonomia estimada.") }
+        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas, transferências, receitas, despesas, latinhas, cobre, orçamento diário e autonomia estimada.") }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }

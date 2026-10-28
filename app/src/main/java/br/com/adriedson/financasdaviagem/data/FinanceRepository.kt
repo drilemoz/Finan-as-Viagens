@@ -24,7 +24,8 @@ data class Entry(
     /** null = valor direto; cans/units = venda ou compra por unidade. */
     val itemKind: String? = null,
     val quantity: Int? = null,
-    val unitMinor: Long? = null
+    val unitMinor: Long? = null,
+    val accountId: Long = 1L
 )
 
 /** units = can count for cans, grams for copper. Negative for sale/withdrawal. */
@@ -44,6 +45,22 @@ data class RecyclingEvent(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class WalletAccount(
+    val id: Long = 0,
+    val name: String,
+    val openingCents: Long = 0,
+    val isReserve: Boolean = false
+)
+
+data class WalletTransfer(
+    val id: Long = 0,
+    val fromId: Long,
+    val toId: Long,
+    val cents: Long,
+    val note: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class Preferences(
     val initialCents: Long = 0,
     val reserveCents: Long = 0,
@@ -56,7 +73,7 @@ data class Preferences(
 val expenseCategories = listOf("Alimentação", "Bebidas", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
 val incomeCategories = listOf("Economias", "Venda de latinhas", "Trabalho", "Doação", "Reembolso", "Outras receitas")
 
-private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_viagem.db", null, 3) {
+private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appContext, "financas_viagem.db", null, 4) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,10 +89,12 @@ private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_v
             created_at INTEGER NOT NULL,
             item_kind TEXT,
             quantity INTEGER,
-            unit_minor INTEGER
+            unit_minor INTEGER,
+            account_id INTEGER NOT NULL DEFAULT 1
         )""")
         db.execSQL("CREATE INDEX idx_entries_time ON entries(created_at DESC)")
         createRecycling(db)
+        createWalletTables(db)
     }
     private fun createRecycling(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE recycling_events (
@@ -95,6 +114,33 @@ private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_v
         )""")
         db.execSQL("CREATE INDEX idx_recycling_time ON recycling_events(created_at DESC, id DESC)")
     }
+    private fun createWalletTables(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            opening_cents INTEGER NOT NULL,
+            is_reserve INTEGER NOT NULL CHECK(is_reserve IN (0,1))
+        )""")
+        db.execSQL("""CREATE TABLE wallet_transfers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            from_id INTEGER NOT NULL,
+            to_id INTEGER NOT NULL,
+            cents INTEGER NOT NULL CHECK(cents > 0),
+            note TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            CHECK(from_id != to_id),
+            FOREIGN KEY(from_id) REFERENCES accounts(id),
+            FOREIGN KEY(to_id) REFERENCES accounts(id)
+        )""")
+        db.execSQL("CREATE INDEX idx_wallet_transfers_time ON wallet_transfers(created_at DESC)")
+        val prefs = appContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val initial = prefs.getLong("initial", 0L)
+        val reserve = prefs.getLong("reserve", 0L)
+        val main = Math.subtractExact(initial, reserve)
+        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(1,'Dinheiro físico',?,0)", arrayOf(main))
+        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(2,'Reserva de emergência',?,1)", arrayOf(reserve))
+        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(3,'Banco / Pix',0,0)")
+    }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE entries ADD COLUMN item_kind TEXT")
@@ -102,7 +148,11 @@ private class LedgerDb(context: Context) : SQLiteOpenHelper(context, "financas_v
             db.execSQL("ALTER TABLE entries ADD COLUMN unit_minor INTEGER")
         }
         if (oldVersion < 3) createRecycling(db)
-        if (newVersion != 3 || oldVersion !in 1..2) error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE entries ADD COLUMN account_id INTEGER NOT NULL DEFAULT 1")
+            createWalletTables(db)
+        }
+        if (newVersion != 4 || oldVersion !in 1..3) error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
     }
 }
 
@@ -131,13 +181,13 @@ class FinanceRepository(context: Context) {
 
     fun all(): List<Entry> {
         val output = mutableListOf<Entry>()
-        db.readableDatabase.rawQuery("SELECT id,kind,category,note,city,country,currency,original_minor,rate_brl,brl_cents,created_at,item_kind,quantity,unit_minor FROM entries ORDER BY created_at DESC,id DESC", null).use { c ->
+        db.readableDatabase.rawQuery("SELECT id,kind,category,note,city,country,currency,original_minor,rate_brl,brl_cents,created_at,item_kind,quantity,unit_minor,account_id FROM entries ORDER BY created_at DESC,id DESC", null).use { c ->
             while (c.moveToNext()) output.add(Entry(
                 c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getString(4), c.getString(5),
                 c.getString(6), c.getLong(7), c.getString(8), c.getLong(9), c.getLong(10),
                 if (c.isNull(11)) null else c.getString(11),
                 if (c.isNull(12)) null else c.getInt(12),
-                if (c.isNull(13)) null else c.getLong(13)
+                if (c.isNull(13)) null else c.getLong(13), c.getLong(14)
             ))
         }
         return output
@@ -145,6 +195,7 @@ class FinanceRepository(context: Context) {
 
     private fun verify(e: Entry) {
         require(e.kind in listOf("expense", "income"))
+        require(e.accountId > 0)
         require(e.category.length in 1..50 && e.note.length <= 300 && e.city.length <= 100 && e.country.length <= 100)
         require(e.currency in FinanceMath.supportedCurrencies)
         require(e.originalMinor > 0 && e.brlCents > 0 && e.originalMinor <= 999_999_999_999L && e.brlCents <= 999_999_999_999L)
@@ -164,7 +215,7 @@ class FinanceRepository(context: Context) {
         put("city", e.city); put("country", e.country); put("currency", e.currency)
         put("original_minor", e.originalMinor); put("rate_brl", e.rateBrl)
         put("brl_cents", e.brlCents); put("created_at", e.createdAt)
-        put("item_kind", e.itemKind); put("quantity", e.quantity); put("unit_minor", e.unitMinor)
+        put("item_kind", e.itemKind); put("quantity", e.quantity); put("unit_minor", e.unitMinor); put("account_id", e.accountId)
     }
 
     private fun isLinkedEntry(writable: SQLiteDatabase, id: Long): Boolean =
@@ -173,6 +224,7 @@ class FinanceRepository(context: Context) {
 
     fun save(e: Entry) {
         verify(e)
+        require(accounts().any { it.id == e.accountId }) { "Conta inexistente" }
         if (e.id > 0) require(!isLinkedEntry(db.writableDatabase, e.id)) {
             "Receita de reciclagem gerenciada exclusivamente na aba Recicláveis"
         }
@@ -190,6 +242,74 @@ class FinanceRepository(context: Context) {
     }
 
     fun isRecyclingEntry(id: Long): Boolean = isLinkedEntry(db.readableDatabase, id)
+
+    fun accounts(): List<WalletAccount> {
+        val list = mutableListOf<WalletAccount>()
+        db.readableDatabase.rawQuery("SELECT id,name,opening_cents,is_reserve FROM accounts ORDER BY id", null).use { c ->
+            while (c.moveToNext()) list.add(WalletAccount(c.getLong(0), c.getString(1), c.getLong(2), c.getInt(3) == 1))
+        }
+        return list
+    }
+
+    fun transfers(): List<WalletTransfer> {
+        val list = mutableListOf<WalletTransfer>()
+        db.readableDatabase.rawQuery("SELECT id,from_id,to_id,cents,note,created_at FROM wallet_transfers ORDER BY created_at DESC,id DESC", null).use { c ->
+            while (c.moveToNext()) list.add(WalletTransfer(c.getLong(0), c.getLong(1), c.getLong(2), c.getLong(3), c.getString(4), c.getLong(5)))
+        }
+        return list
+    }
+
+    private fun validateAccount(a: WalletAccount) {
+        require(a.name.trim() == a.name && a.name.length in 2..50 && !a.name.any { it.code < 32 || it.code == 127 })
+        require(a.openingCents in -999_999_999_999L..999_999_999_999L)
+    }
+
+    fun saveAccount(account: WalletAccount) {
+        validateAccount(account)
+        require(accounts().none { it.id != account.id && it.name.equals(account.name, ignoreCase = true) }) {
+            "Já existe uma conta com esse nome"
+        }
+        val w = db.writableDatabase
+        val v = ContentValues().apply {
+            put("name", account.name); put("opening_cents", account.openingCents)
+            put("is_reserve", (if (account.isReserve) 1 else 0).toInt())
+        }
+        if (account.id == 0L) check(w.insertOrThrow("accounts", null, v) > 0)
+        else check(w.update("accounts", v, "id=?", arrayOf(account.id.toString())) == 1)
+    }
+
+    fun addTransfer(t: WalletTransfer) {
+        require(t.id == 0L && t.cents in 1..999_999_999_999L && t.fromId != t.toId)
+        require(t.note.length <= 200 && t.createdAt > 0 && t.createdAt <= System.currentTimeMillis() + 86_400_000L)
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            val ac = accounts()
+            require(ac.any { it.id == t.fromId } && ac.any { it.id == t.toId }) { "Conta inexistente" }
+            val balances = br.com.adriedson.financasdaviagem.core.WalletMath.balances(ac, all(), transfers())
+            require((balances[t.fromId] ?: 0L) >= t.cents) { "Saldo insuficiente na origem" }
+            val v = ContentValues().apply {
+                put("from_id", t.fromId); put("to_id", t.toId); put("cents", t.cents)
+                put("note", t.note); put("created_at", t.createdAt)
+            }
+            check(w.insertOrThrow("wallet_transfers", null, v) > 0)
+            w.setTransactionSuccessful()
+        } finally { w.endTransaction() }
+    }
+
+    fun deleteTransfer(id: Long) {
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            val existing = transfers().singleOrNull { it.id == id } ?: error("Transferência inexistente")
+            val currentBalances = br.com.adriedson.financasdaviagem.core.WalletMath.balances(accounts(), all(), transfers())
+            require((currentBalances[existing.toId] ?: 0L) >= existing.cents) {
+                "Saldo insuficiente no destino para desfazer a transferência"
+            }
+            check(w.delete("wallet_transfers", "id=?", arrayOf(id.toString())) == 1)
+            w.setTransactionSuccessful()
+        } finally { w.endTransaction() }
+    }
 
     fun recyclingEvents(): List<RecyclingEvent> = readRecycling(db.readableDatabase)
 
@@ -252,9 +372,10 @@ class FinanceRepository(context: Context) {
     }
 
     /** Collection/adjustment affects stock; a completed sale affects stock and income atomically. */
-    fun addRecyclingEvent(event: RecyclingEvent) {
+    fun addRecyclingEvent(event: RecyclingEvent, accountId: Long = 1L) {
         require(event.id == 0L)
         validateRecycle(event)
+        require(accounts().any { it.id == accountId }) { "Conta de recebimento inexistente" }
         val writable = db.writableDatabase
         writable.beginTransaction()
         try {
@@ -266,7 +387,7 @@ class FinanceRepository(context: Context) {
                 val amount = requireNotNull(event.receivedCents)
                 val entry = Entry(kind = "income", category = "Trabalho", note = note,
                     city = event.city, country = event.country, originalMinor = amount,
-                    brlCents = amount, createdAt = event.createdAt)
+                    brlCents = amount, createdAt = event.createdAt, accountId = accountId)
                 writable.insertOrThrow("entries", null, values(entry))
             } else null
             check(writable.insertOrThrow("recycling_events", null,
@@ -290,7 +411,7 @@ class FinanceRepository(context: Context) {
     }
 
     fun createBackup(): String {
-        val root = JSONObject().put("schemaVersion", 3).put("createdAt", System.currentTimeMillis())
+        val root = JSONObject().put("schemaVersion", 4).put("createdAt", System.currentTimeMillis())
         val s = settings()
         root.put("settings", JSONObject().put("initialCents", s.initialCents).put("reserveCents", s.reserveCents)
             .put("dailyBudgetCents", s.dailyBudgetCents).put("themeMode", s.themeMode)
@@ -301,7 +422,8 @@ class FinanceRepository(context: Context) {
                 .put("note", e.note).put("city", e.city).put("country", e.country)
                 .put("currency", e.currency).put("originalMinor", e.originalMinor)
                 .put("rateBrl", e.rateBrl).put("brlCents", e.brlCents).put("createdAt", e.createdAt)
-                .put("itemKind", e.itemKind).put("quantity", e.quantity).put("unitMinor", e.unitMinor))
+                .put("itemKind", e.itemKind).put("quantity", e.quantity).put("unitMinor", e.unitMinor)
+                .put("accountId", e.accountId))
         }
         val recycling = JSONArray()
         recyclingEvents().forEach { e ->
@@ -312,21 +434,31 @@ class FinanceRepository(context: Context) {
                 .put("financeEntryId", e.financeEntryId).put("note", e.note).put("city", e.city)
                 .put("country", e.country).put("createdAt", e.createdAt))
         }
-        return root.put("entries", data).put("recyclingEvents", recycling).toString(2)
+        val accountsData = JSONArray()
+        accounts().forEach { a -> accountsData.put(JSONObject().put("id", a.id).put("name", a.name)
+            .put("openingCents", a.openingCents).put("isReserve", a.isReserve)) }
+        val transfersData = JSONArray()
+        transfers().forEach { t -> transfersData.put(JSONObject().put("id", t.id).put("fromId", t.fromId)
+            .put("toId", t.toId).put("cents", t.cents).put("note", t.note).put("createdAt", t.createdAt)) }
+        return root.put("entries", data).put("recyclingEvents", recycling)
+            .put("accounts", accountsData).put("transfers", transfersData).toString(2)
     }
 
-    data class Backup(val settings: Preferences, val entries: List<Entry>, val recyclingEvents: List<RecyclingEvent>)
+    data class Backup(
+        val settings: Preferences, val entries: List<Entry>, val recyclingEvents: List<RecyclingEvent>,
+        val accounts: List<WalletAccount>, val transfers: List<WalletTransfer>
+    )
 
     fun parseBackup(content: String): Backup {
         require(content.length <= 4_000_000) { "Arquivo muito grande" }
         val root = JSONObject(content)
         val schema = root.getInt("schemaVersion")
-        require(schema in 1..3) { "Versão de backup incompatível" }
+        require(schema in 1..4) { "Versão de backup incompatível" }
         val pref = root.getJSONObject("settings")
         val settings = Preferences(pref.getLong("initialCents"), pref.getLong("reserveCents"),
             pref.getLong("dailyBudgetCents"), pref.getString("themeMode"),
-            if (schema == 3) pref.getInt("cansPerKg") else 70,
-            if (schema == 3) pref.getLong("cansPriceCentsKg") else 600)
+            if (schema >= 3) pref.getInt("cansPerKg") else 70,
+            if (schema >= 3) pref.getLong("cansPriceCentsKg") else 600)
         require(settings.initialCents >= 0 && settings.reserveCents >= 0 && settings.dailyBudgetCents >= 0)
         require(settings.themeMode in listOf("system", "light", "dark"))
         require(settings.cansPerKg in 1..1000 && settings.cansPriceCentsKg in 1..100_000_000)
@@ -340,7 +472,8 @@ class FinanceRepository(context: Context) {
                 o.getLong("brlCents"), o.getLong("createdAt"),
                 if (schema >= 2 && !o.isNull("itemKind")) o.getString("itemKind") else null,
                 if (schema >= 2 && !o.isNull("quantity")) o.getInt("quantity") else null,
-                if (schema >= 2 && !o.isNull("unitMinor")) o.getLong("unitMinor") else null)
+                if (schema >= 2 && !o.isNull("unitMinor")) o.getLong("unitMinor") else null,
+                if (schema >= 4) o.getLong("accountId") else 1L)
         }
         items.forEach { verify(it); require(it.id > 0) }
         require(items.map { it.id }.distinct().size == items.size) { "IDs duplicados" }
@@ -367,23 +500,77 @@ class FinanceRepository(context: Context) {
                 && entry.createdAt == sale.createdAt)
         }
         stock(recycling)
-        return Backup(settings, items, recycling)
+        val ac = if (schema >= 4) {
+            val array = root.getJSONArray("accounts")
+            require(array.length() in 1..100)
+            (0 until array.length()).map { i ->
+                val o = array.getJSONObject(i)
+                WalletAccount(o.getLong("id"), o.getString("name"), o.getLong("openingCents"), o.getBoolean("isReserve"))
+            }
+        } else listOf(
+            WalletAccount(1, "Dinheiro físico", Math.subtractExact(settings.initialCents, settings.reserveCents)),
+            WalletAccount(2, "Reserva de emergência", settings.reserveCents, true),
+            WalletAccount(3, "Banco / Pix")
+        )
+        val tx = if (schema >= 4) {
+            val array = root.getJSONArray("transfers")
+            require(array.length() <= 10000)
+            (0 until array.length()).map { i ->
+                val o = array.getJSONObject(i)
+                WalletTransfer(o.getLong("id"), o.getLong("fromId"), o.getLong("toId"),
+                    o.getLong("cents"), o.getString("note"), o.getLong("createdAt"))
+            }
+        } else emptyList()
+        validateWalletData(ac, items, tx)
+        return Backup(settings, items, recycling, ac, tx)
     }
 
     private fun trueIfSale(event: RecyclingEvent): Boolean = event.action == "sale"
+
+    private fun validateWalletData(accounts: List<WalletAccount>, entries: List<Entry>, transfers: List<WalletTransfer>) {
+        accounts.forEach { validateAccount(it); require(it.id > 0) }
+        require(accounts.map { it.id }.distinct().size == accounts.size)
+        require(accounts.map { it.name.lowercase(java.util.Locale.ROOT) }.distinct().size == accounts.size)
+        val ids = accounts.map { it.id }.toSet()
+        entries.forEach { require(it.accountId in ids) { "Lançamento referencia conta inexistente" } }
+        transfers.forEach { t ->
+            require(t.id > 0 && t.fromId != t.toId && t.fromId in ids && t.toId in ids)
+            require(t.cents in 1..999_999_999_999L && t.note.length <= 200)
+            require(t.createdAt > 0 && t.createdAt <= System.currentTimeMillis() + 86_400_000L)
+        }
+        require(transfers.map { it.id }.distinct().size == transfers.size)
+        br.com.adriedson.financasdaviagem.core.WalletMath.balances(accounts, entries, transfers)
+    }
 
     fun restore(backup: Backup) {
         backup.entries.forEach { verify(it) }
         backup.recyclingEvents.forEach { validateRecycle(it, allowLinked = trueIfSale(it)) }
         stock(backup.recyclingEvents)
+        validateWalletData(backup.accounts, backup.entries, backup.transfers)
         val writable = db.writableDatabase
         writable.beginTransaction()
         try {
             writable.delete("recycling_events", null, null)
             writable.delete("entries", null, null)
+            writable.delete("wallet_transfers", null, null)
+            writable.delete("accounts", null, null)
+            backup.accounts.forEach { a ->
+                val v = ContentValues().apply {
+                    put("id", a.id); put("name", a.name); put("opening_cents", a.openingCents)
+                    put("is_reserve", (if (a.isReserve) 1 else 0).toInt())
+                }
+                writable.insertOrThrow("accounts", null, v)
+            }
             backup.entries.forEach { e ->
                 val v = values(e).apply { put("id", e.id) }
                 writable.insertOrThrow("entries", null, v)
+            }
+            backup.transfers.forEach { t ->
+                val v = ContentValues().apply {
+                    put("id", t.id); put("from_id", t.fromId); put("to_id", t.toId)
+                    put("cents", t.cents); put("note", t.note); put("created_at", t.createdAt)
+                }
+                writable.insertOrThrow("wallet_transfers", null, v)
             }
             backup.recyclingEvents.forEach { e ->
                 writable.insertOrThrow("recycling_events", null, eventValues(e).apply { put("id", e.id) })
@@ -401,18 +588,33 @@ class FinanceRepository(context: Context) {
             return "\"" + safe.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
         }
         return buildString {
-            append("data_iso;tipo;categoria;valor_original;moeda;taxa_brl;valor_brl;descricao;cidade;pais;tipo_item;quantidade;preco_unitario\r\n")
+            append("data_iso;tipo;categoria;valor_original;moeda;taxa_brl;valor_brl;descricao;cidade;pais;tipo_item;quantidade;preco_unitario;conta_id\r\n")
             all().forEach { e ->
                 val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(e.createdAt))
                 val cols = listOf(date, e.kind, e.category,
                     FinanceMath.decimalInput(e.originalMinor, FinanceMath.digits(e.currency)), e.currency,
                     e.rateBrl, FinanceMath.decimalInput(e.brlCents), e.note, e.city, e.country,
                     e.itemKind ?: "", e.quantity?.toString() ?: "",
-                    e.unitMinor?.let { FinanceMath.decimalInput(it, FinanceMath.digits(e.currency)) } ?: "")
+                    e.unitMinor?.let { FinanceMath.decimalInput(it, FinanceMath.digits(e.currency)) } ?: "", e.accountId.toString())
                 append(cols.joinToString(";") { escaped(it) }); append("\r\n")
             }
         }
     }
+    fun exportTransfersCsv(): String = buildString {
+        append("data_iso;origem;destino;valor_brl;descricao\r\n")
+        val names = accounts().associate { it.id to it.name }
+        transfers().forEach { t ->
+            fun cell(x: String): String = "\"" +
+                (if (Regex("^[=+@-]").containsMatchIn(x.trimStart())) "'" + x else x)
+                    .replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
+            val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT)
+                .format(java.util.Date(t.createdAt))
+            append(listOf(date, names[t.fromId] ?: "?", names[t.toId] ?: "?",
+                FinanceMath.decimalInput(t.cents), t.note).joinToString(";") { cell(it) })
+            append("\r\n")
+        }
+    }
+
     /** Operational log CSV separate from financial CSV: collections never masquerade as income. */
     fun exportRecyclingCsv(): String {
         fun esc(value: String): String {

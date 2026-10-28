@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import br.com.adriedson.financasdaviagem.core.FinanceMath
+import br.com.adriedson.financasdaviagem.data.WalletAccount
 import br.com.adriedson.financasdaviagem.data.Entry
 import br.com.adriedson.financasdaviagem.data.expenseCategories
 import br.com.adriedson.financasdaviagem.data.incomeCategories
@@ -48,9 +49,10 @@ private fun ChoiceMenu(label: String, selection: String, choices: List<String>, 
 
 @Composable
 fun EntryEditor(
-    existing: Entry?, initialKind: String,
+    existing: Entry?, initialKind: String, accounts: List<WalletAccount>,
     onDismiss: () -> Unit, onSave: (Entry) -> Unit, onDelete: ((Entry) -> Unit)
 ) {
+    var accountId by remember(existing?.id, accounts) { mutableLongStateOf(existing?.accountId ?: accounts.firstOrNull { !it.isReserve }?.id ?: 1L) }
     var kind by remember(existing?.id) { mutableStateOf(existing?.kind ?: initialKind) }
     var category by remember(existing?.id) {
         mutableStateOf(existing?.category ?: if (initialKind == "income") incomeCategories.first() else expenseCategories.first())
@@ -123,6 +125,8 @@ fun EntryEditor(
                         }
                     }
 
+                    WalletAccountPicker("Conta utilizada", accounts, accountId) { accountId = it }
+
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(20.dp)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp),
@@ -172,6 +176,8 @@ fun EntryEditor(
                             shape = RoundedCornerShape(13.dp),
                             supportingText = { Text("Informe a cotação real usada; sem atualização automática.") })
                     }
+
+                    WalletAccountPicker("Conta utilizada", accounts, accountId) { accountId = it }
 
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(18.dp)) {
@@ -294,7 +300,8 @@ fun EntryEditor(
                                     createdAt = existing?.createdAt ?: System.currentTimeMillis(),
                                     itemKind = if (useQuantity) itemKind else null,
                                     quantity = if (useQuantity) parsedQuantity else null,
-                                    unitMinor = if (useQuantity) parsedUnit else null
+                                    unitMinor = if (useQuantity) parsedUnit else null,
+                                    accountId = accountId
                                 ))
                             }
                         }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(13.dp)) {

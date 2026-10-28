@@ -34,3 +34,11 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Ainda sem build `:app:assembleDebug`, instalação ou teste em telefone Android. A integridade e a compatibilidade real devem ser verificadas no workflow GitHub.
 - Backup schema 3 e restauração devem ser exercitados em aparelho antes de depender deles como único backup. Não desinstale sem backup válido.
 
+
+## alpha.5 (2026-10-27)
+
+- Verificar migração SQLite 1/2/3→4 em CI e no aparelho, com saldos iniciais, reserva e receita de reciclagem vinculada.
+- Verificar transferência de dinheiro físico para Banco/Pix e reserva sem aumento de saldo total.
+- Verificar backup JSON schema 4 (exportação/restore) e importação dos formatos 1, 2 e 3.
+- Conferir edição de receitas/despesas e escolha de conta de recebimento de vendas.
+- A compilação Gradle/Android e o teste de interface em aparelho ainda não foram executados neste ambiente.
