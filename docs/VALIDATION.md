@@ -59,3 +59,12 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Confirmar relatórios de Trabalho/Doação e que transferências, coletas não vendidas e saldos iniciais ficam excluídos.
 - Sem mudança do esquema SQLite v5 e backup JSON schema 5.
 - Build `:app:assembleDebug` e testes reais em celular ainda pendentes até GitHub Actions.
+
+## alpha.8 (2026-10-27)
+
+- Compilação isolada da matemática `TripPlanningMath` com `kotlinc`, incluindo valores em centavos inteiros, meta, custo diário × duração, percentual e alertas.
+- Parser Kotlin PSI em todos os arquivos Kotlin do projeto; confirmar ausência de erros de sintaxe.
+- Verificar em celular que o painel e a tela Planejamento apresentam o mesmo alerta, atualizado após qualquer lançamento.
+- Confirmar backup JSON schema 6 e restauração de schema 1–5 com novos parâmetros zerados/default; o SQLite permanece v5.
+- Conferir temas claro/escuro, teclado monetário, metas zero, dias zero e aparelhos estreitos.
+- Não houve compilação Android completa nem testes instrumentados; a compatibilidade real deverá ser confirmada pelo workflow GitHub Actions e atualização com backup prévio.

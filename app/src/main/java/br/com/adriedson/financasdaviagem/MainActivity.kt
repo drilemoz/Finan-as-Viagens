@@ -212,8 +212,11 @@ private fun FinanceApp(activity: ComponentActivity) {
                         onBills = { screen = "bills" },
                         onHistory = { screen = "history" },
                         onReports = { screen = "reports" },
+                        onPlanning = { screen = "planning" },
                         onSettings = { screen = "settings" })
                     "reports" -> ReportsScreen(entries, onBack = { screen = "home" })
+                    "planning" -> TripPlanningScreen(settings, entries, accounts, transfers,
+                        onSave = ::saveSettings, onBack = { screen = "home" })
                     "history" -> HistoryScreen(entries, onEdit = { entry ->
                         scope.launch {
                             if (withContext(Dispatchers.IO) { repo.isManagedEntry(entry.id) }) {
@@ -280,7 +283,8 @@ private fun FinanceApp(activity: ComponentActivity) {
                         },
                         onImport = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                         onCsv = { csvLauncher.launch("financas-da-viagem-lancamentos.csv") },
-                        onAbout = { screen = "about" }, onAccounts = { screen = "wallets" })
+                        onAbout = { screen = "about" }, onAccounts = { screen = "wallets" },
+                        onPlanning = { screen = "planning" })
                     "about" -> AboutScreen(onBack = { screen = "settings" })
                 }
             }

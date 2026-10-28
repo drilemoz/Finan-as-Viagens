@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.adriedson.financasdaviagem.core.DailyBudgetAlert
+import br.com.adriedson.financasdaviagem.core.TripPlanningMath
 import br.com.adriedson.financasdaviagem.core.FinanceMath
 import br.com.adriedson.financasdaviagem.core.WalletMath
 import br.com.adriedson.financasdaviagem.data.WalletAccount
@@ -42,7 +44,8 @@ private fun expenseTotals(entries: List<Entry>) = entries.filter { it.kind == "e
 fun DashboardScreen(
     entries: List<Entry>, settings: Preferences, accounts: List<WalletAccount>, transfers: List<WalletTransfer>,
     onAddExpense: () -> Unit, onAddIncome: () -> Unit, onAddDonation: () -> Unit,
-    onBills: () -> Unit, onHistory: () -> Unit, onReports: () -> Unit, onSettings: () -> Unit
+    onBills: () -> Unit, onHistory: () -> Unit, onReports: () -> Unit,
+    onPlanning: () -> Unit, onSettings: () -> Unit
 ) {
     val income = entries.filter { it.kind == "income" }.sumOf { it.brlCents }
     val expense = entries.filter { it.kind == "expense" }.sumOf { it.brlCents }
@@ -50,7 +53,10 @@ fun DashboardScreen(
     val balances = WalletMath.balances(accounts, entries, transfers)
     val balance = WalletMath.usable(accounts, balances)
     val reserve = WalletMath.reserve(accounts, balances)
-    val today = entries.filter { it.kind == "expense" && it.createdAt >= todayStart() }.sumOf { it.brlCents }
+    val now = System.currentTimeMillis()
+    val today = entries.filter { it.kind == "expense" && it.createdAt >= todayStart() && it.createdAt <= now }.sumOf { it.brlCents }
+    val budgetAlert = TripPlanningMath.calculate(balance, settings.dailyBudgetCents, settings.tripGoalCents,
+        settings.plannedTripDays, settings.budgetAlertPercent, today).alert
     val autonomy = FinanceMath.autonomyDays(balance, settings.dailyBudgetCents)
     val categories = expenseTotals(entries)
     LazyColumn(
@@ -100,10 +106,13 @@ fun DashboardScreen(
                     Icons.Outlined.TrendingDown, Modifier.weight(1f))
             }
         }
-        if (settings.dailyBudgetCents > 0 && today > settings.dailyBudgetCents) {
+        if (budgetAlert != DailyBudgetAlert.NONE) {
             item {
                 Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(16.dp)) {
-                    Text("Seu gasto de hoje ultrapassou o orçamento diário.",
+                    Text(if (budgetAlert == DailyBudgetAlert.EXCEEDED)
+                        "Seu gasto de hoje ultrapassou o orçamento diário."
+                        else if (today == settings.dailyBudgetCents) "Você atingiu o orçamento diário."
+                        else "Atenção: você já gastou pelo menos ${settings.budgetAlertPercent}% do orçamento diário.",
                         Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
@@ -137,6 +146,12 @@ fun DashboardScreen(
                     shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
                     Icon(Icons.Outlined.VolunteerActivism, null); Spacer(Modifier.width(3.dp)); Text("Doação")
                 }
+            }
+        }
+        item {
+            OutlinedButton(onClick = onPlanning, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Flag, null); Spacer(Modifier.width(8.dp))
+                Text("Planejar orçamento e metas da viagem")
             }
         }
         item {
@@ -282,7 +297,8 @@ private fun SettingsTile(icon: ImageVector, label: String, description: String, 
 @Composable
 fun SettingsScreen(
     settings: Preferences, onSave: (Preferences) -> Unit,
-    onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit, onAccounts: () -> Unit
+    onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit,
+    onAccounts: () -> Unit, onPlanning: () -> Unit
 ) {
     var budget by remember(settings.dailyBudgetCents) { mutableStateOf(FinanceMath.decimalInput(settings.dailyBudgetCents)) }
     var error by remember { mutableStateOf("") }
@@ -302,6 +318,7 @@ fun SettingsScreen(
         item { Text("O saldo inicial e a reserva são gerenciados por conta na aba Carteiras.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         item { SettingsTile(Icons.Outlined.AccountBalanceWallet, "Carteiras e reserva", "Definir saldos iniciais e transferir entre contas", onAccounts) }
+        item { SettingsTile(Icons.Outlined.Flag, "Planejamento da viagem", "Meta, dias planejados e alertas do orçamento", onPlanning) }
         item { MoneyField(value = budget, onValueChange = { budget = it },
             label = "Orçamento diário", modifier = Modifier.fillMaxWidth()) }
         if (error.isNotEmpty()) item { Text(error, color = MaterialTheme.colorScheme.error,
@@ -340,17 +357,17 @@ fun AboutScreen(onBack: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.7 · versionCode 7", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 0.1.0-alpha.8 · versionCode 8", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
-        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, orçamento diário e autonomia estimada.") }
-        item { SectionTitle("Novidades da alpha.7") }
-        item { Text("• Pontuação automática ao digitar dinheiro em todos os formulários monetários.\n• Relatórios de receitas, despesas, doações e trabalho, com filtros de período e gastos por categoria.\n• Movimentações anteriores, reciclagem e carteiras preservadas.") }
+        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, metas e orçamento diário.") }
+        item { SectionTitle("Novidades da alpha.8") }
+        item { Text("• Planejamento financeiro com meta de caixa para a viagem e dias planejados.\n• Previsão de custo calculada pelo orçamento diário e cobertura em dias.\n• Aviso local de aproximação ou estouro do limite de hoje, com percentual configurável.\n• Backup JSON atualizado para preservar os parâmetros de planejamento.") }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }
         item { Text("Os valores exibidos no painel são em reais. Lançamentos em outras moedas usam a taxa de câmbio informada manualmente na data do registro; o aplicativo não consulta cotações automaticamente.") }
         item { SectionTitle("Autonomia") }
-        item { Text("A estimativa é saldo utilizável ÷ orçamento diário. Não é uma previsão de gastos futuros ou garantia de duração do dinheiro.") }
+        item { Text("A estimativa é saldo utilizável ÷ orçamento diário. O custo planejado é dias × orçamento, sem considerar receitas futuras. Nenhum valor de recicláveis ainda não vendidos é tratado como dinheiro disponível.") }
         item { Text("Projeto inicial · Android nativo · Kotlin / Jetpack Compose", color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall) }
     }

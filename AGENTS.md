@@ -26,3 +26,8 @@
 - Alpha.7: formatos monetários durante digitação são responsabilidade do MoneyField; não aplicar máscara de centavos em cotação cambial ou peso (kg).
 - Relatórios usam apenas entries efetivos em BRL (brlCents); não somar transferências, estoque projetado ou saldos iniciais.
 - SQLite permanece v5 e backup JSON schema 5; versionCode 7 e nome da CI alpha.7.
+
+- Alpha.8: SQLite v5 inalterado, JSON schema **6** incluindo `tripGoalCents`, `plannedTripDays`, `budgetAlertPercent`; manter compatibilidade de backups 1–5 com defaults 0/0/80.
+- Planejamento deriva somente do saldo das contas não-reserva; não misturar transferências, recicláveis não vendidos ou contas a pagar pendentes com dinheiro recebido.
+- Sem notificações do sistema: avisos de limite aparecem no app; nunca prometer alertas em background.
+- Versionar alpha.8 (versionCode 8), documentação, Sobre e nome do Artifact.

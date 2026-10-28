@@ -80,7 +80,11 @@ data class Preferences(
     val dailyBudgetCents: Long = 4000,
     val themeMode: String = "system",
     val cansPerKg: Int = RecyclingMath.DEFAULT_CANS_PER_KG,
-    val cansPriceCentsKg: Long = RecyclingMath.DEFAULT_CANS_PRICE_CENTS_KG
+    val cansPriceCentsKg: Long = RecyclingMath.DEFAULT_CANS_PRICE_CENTS_KG,
+    /** Zero means not configured. Goal applies only to non-reserve accounts. */
+    val tripGoalCents: Long = 0,
+    val plannedTripDays: Int = 0,
+    val budgetAlertPercent: Int = 80
 )
 
 val expenseCategories = listOf("Alimentação", "Bebidas", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
@@ -195,16 +199,23 @@ class FinanceRepository(context: Context) {
         dailyBudgetCents = sp.getLong("budget", 4000),
         themeMode = sp.getString("theme", "system")?.takeIf { it in listOf("system", "dark", "light") } ?: "system",
         cansPerKg = sp.getInt("cansPerKg", 70).takeIf { it in 1..1000 } ?: 70,
-        cansPriceCentsKg = sp.getLong("cansPriceKg", 600).takeIf { it in 1..100_000_000 } ?: 600
+        cansPriceCentsKg = sp.getLong("cansPriceKg", 600).takeIf { it in 1..100_000_000 } ?: 600,
+        tripGoalCents = sp.getLong("tripGoal", 0).takeIf { it in 0..999_999_999_999L } ?: 0L,
+        plannedTripDays = sp.getInt("tripDays", 0).takeIf { it in 0..3650 } ?: 0,
+        budgetAlertPercent = sp.getInt("budgetAlert", 80).takeIf { it in 50..100 } ?: 80
     )
 
     fun saveSettings(s: Preferences) {
         require(s.initialCents >= 0 && s.reserveCents >= 0 && s.dailyBudgetCents >= 0)
         require(s.themeMode in listOf("system", "dark", "light"))
         require(s.cansPerKg in 1..1000 && s.cansPriceCentsKg in 1..100_000_000)
+        require(s.dailyBudgetCents <= 999_999_999_999L && s.tripGoalCents in 0..999_999_999_999L)
+        require(s.plannedTripDays in 0..3650 && s.budgetAlertPercent in 50..100)
         check(sp.edit().putLong("initial", s.initialCents).putLong("reserve", s.reserveCents)
             .putLong("budget", s.dailyBudgetCents).putString("theme", s.themeMode)
-            .putInt("cansPerKg", s.cansPerKg).putLong("cansPriceKg", s.cansPriceCentsKg).commit())
+            .putInt("cansPerKg", s.cansPerKg).putLong("cansPriceKg", s.cansPriceCentsKg)
+            .putLong("tripGoal", s.tripGoalCents).putInt("tripDays", s.plannedTripDays)
+            .putInt("budgetAlert", s.budgetAlertPercent).commit())
     }
 
     fun all(): List<Entry> {
@@ -523,11 +534,13 @@ class FinanceRepository(context: Context) {
     }
 
     fun createBackup(): String {
-        val root = JSONObject().put("schemaVersion", 5).put("createdAt", System.currentTimeMillis())
+        val root = JSONObject().put("schemaVersion", 6).put("createdAt", System.currentTimeMillis())
         val s = settings()
         root.put("settings", JSONObject().put("initialCents", s.initialCents).put("reserveCents", s.reserveCents)
             .put("dailyBudgetCents", s.dailyBudgetCents).put("themeMode", s.themeMode)
-            .put("cansPerKg", s.cansPerKg).put("cansPriceCentsKg", s.cansPriceCentsKg))
+            .put("cansPerKg", s.cansPerKg).put("cansPriceCentsKg", s.cansPriceCentsKg)
+            .put("tripGoalCents", s.tripGoalCents).put("plannedTripDays", s.plannedTripDays)
+            .put("budgetAlertPercent", s.budgetAlertPercent))
         val data = JSONArray()
         all().forEach { e ->
             data.put(JSONObject().put("id", e.id).put("kind", e.kind).put("category", e.category)
@@ -571,15 +584,20 @@ class FinanceRepository(context: Context) {
         require(content.length <= 4_000_000) { "Arquivo muito grande" }
         val root = JSONObject(content)
         val schema = root.getInt("schemaVersion")
-        require(schema in 1..5) { "Versão de backup incompatível" }
+        require(schema in 1..6) { "Versão de backup incompatível" }
         val pref = root.getJSONObject("settings")
         val settings = Preferences(pref.getLong("initialCents"), pref.getLong("reserveCents"),
             pref.getLong("dailyBudgetCents"), pref.getString("themeMode"),
             if (schema >= 3) pref.getInt("cansPerKg") else 70,
-            if (schema >= 3) pref.getLong("cansPriceCentsKg") else 600)
+            if (schema >= 3) pref.getLong("cansPriceCentsKg") else 600,
+            if (schema >= 6) pref.getLong("tripGoalCents") else 0,
+            if (schema >= 6) pref.getInt("plannedTripDays") else 0,
+            if (schema >= 6) pref.getInt("budgetAlertPercent") else 80)
         require(settings.initialCents >= 0 && settings.reserveCents >= 0 && settings.dailyBudgetCents >= 0)
         require(settings.themeMode in listOf("system", "light", "dark"))
         require(settings.cansPerKg in 1..1000 && settings.cansPriceCentsKg in 1..100_000_000)
+        require(settings.tripGoalCents in 0..999_999_999_999L && settings.plannedTripDays in 0..3650)
+        require(settings.dailyBudgetCents <= 999_999_999_999L && settings.budgetAlertPercent in 50..100)
         val arr = root.getJSONArray("entries")
         require(arr.length() <= 10000) { "Backup contém lançamentos demais" }
         val items = (0 until arr.length()).map { i ->

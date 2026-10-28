@@ -1,6 +1,16 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.7 / versionCode 7** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.8 / versionCode 8** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Novidades na alpha.8: planejamento da cicloviagem 🚴📅
+
+- Nova tela **Planejamento da viagem**, acessível no Painel e em Configurações, com meta financeira (valor em BRL), orçamento diário e dias planejados (0 = indefinido).
+- Mostra **saldo utilizável real**, sem reserva, com receitas já recebidas (incluindo vendas confirmadas e doações), sem contar coleta ou vendas projetadas como renda.
+- Calcula **custo dos dias planejados** (`orçamento diário × dias`), **diferença entre meta e saldo**, **falta para custear os dias** e **autonomia** (`saldo utilizável ÷ orçamento diário`) em centavos inteiros. Nunca presume dinheiro futuro.
+- Alerta **dentro do aplicativo** quando o gasto efetivo do dia atinge percentual configurável (50/70/80/90/100%) ou ultrapassa o limite diário. Não existem notificações do sistema nem serviço em background.
+- Parâmetros armazenados localmente em SharedPreferences; **SQLite continua na versão 5**, sem migração e sem alteração dos lançamentos.
+- **Backup JSON schema 6** inclui meta, dias e limite de alerta. Restauração ainda aceita backups das versões **1 a 5** com os novos parâmetros inicialmente desativados; exportação CSV e demais módulos inalterados.
+- Meta e projeção são estimativas de planejamento, não garantias de duração. O peso estimado das latinhas e o cobre não vendido não integram saldo disponível.
 
 ## Novidades na alpha.7: valores formatados e relatórios
 
@@ -99,7 +109,7 @@ A imagem enviada está preservada em `docs/layout_referencia.jpg` para orientar 
 
 ## Migrações históricas e alpha.6
 
-O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. Na alpha.2, o backup JSON usava schema 2. A versão atual gera schema 5 e continua aceitando schemas 1, 2, 3 e 4.
+O banco SQLite passa de v1 para v2 exclusivamente com três colunas opcionais (`item_kind`, `quantity`, `unit_minor`), sem apagar lançamentos antigos. Se houver dados de valor direto, as colunas ficam nulas. Na alpha.2, o backup JSON usava schema 2. A versão atual gera schema 6 e continua aceitando schemas 1, 2, 3, 4 e 5.
 
 ### SQLite v4 e backups
 

@@ -1,3 +1,11 @@
+## 0.1.0-alpha.8 (2026-10-27) • versionCode 8
+
+- Tela Planejamento: meta financeira, dias da cicloviagem, orçamento diário e limite de alerta (50 a 100%).
+- Painel indica limite diário atingido ou aproximação configurada; alerta apenas local, sem push.
+- Projeção de custo e insuficiência, autonomia e avanço da meta exclusivamente com saldo disponível real sem reserva, sem somar transferências nem materiais a vender.
+- Backup JSON schema 6, compatível com restauração schema 1–5. SQLite v5 mantido, sem migração destrutiva.
+- Sintaxe Kotlin e matemática local validadas; build do APK e teste em aparelho pendentes.
+
 ## 0.1.0-alpha.7 (2026-10-27) • versionCode 7
 
 - Máscara de centavos e separador de milhar durante a digitação em campos monetários, sem alterar armazenamento inteiro.
