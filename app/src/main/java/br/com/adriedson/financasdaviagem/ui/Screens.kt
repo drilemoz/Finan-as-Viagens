@@ -3,6 +3,7 @@ package br.com.adriedson.financasdaviagem.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +22,7 @@ import br.com.adriedson.financasdaviagem.core.DailyBudgetAlert
 import br.com.adriedson.financasdaviagem.core.TripPlanningMath
 import br.com.adriedson.financasdaviagem.core.FinanceMath
 import br.com.adriedson.financasdaviagem.core.WalletMath
+import br.com.adriedson.financasdaviagem.core.ScreenSummaries
 import br.com.adriedson.financasdaviagem.data.WalletAccount
 import br.com.adriedson.financasdaviagem.data.WalletTransfer
 import br.com.adriedson.financasdaviagem.data.Entry
@@ -36,10 +38,6 @@ private fun todayStart(): Long = Calendar.getInstance().apply {
     set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
 }.timeInMillis
 
-private fun expenseTotals(entries: List<Entry>) = entries.filter { it.kind == "expense" }
-    .groupBy { it.category }.mapValues { (_, list) -> list.sumOf { it.brlCents } }
-    .toList().sortedByDescending { it.second }
-
 @Composable
 fun DashboardScreen(
     entries: List<Entry>, settings: Preferences, accounts: List<WalletAccount>, transfers: List<WalletTransfer>,
@@ -47,20 +45,26 @@ fun DashboardScreen(
     onBills: () -> Unit, onHistory: () -> Unit, onReports: () -> Unit,
     onPlanning: () -> Unit, onSettings: () -> Unit
 ) {
-    val income = entries.filter { it.kind == "income" }.sumOf { it.brlCents }
-    val expense = entries.filter { it.kind == "expense" }.sumOf { it.brlCents }
-    val donationIncome = entries.filter { it.kind == "income" && it.category == "Doação" }.sumOf { it.brlCents }
-    val balances = WalletMath.balances(accounts, entries, transfers)
+    // Os totais e saldos não mudam quando a lista apenas é rolada ou um diálogo abre.
+    val dayStart = todayStart()
+    val totals = remember(entries, dayStart) {
+        ScreenSummaries.dashboard(entries, dayStart, System.currentTimeMillis())
+    }
+    val expense = totals.expenseCents
+    val donationIncome = totals.donationCents
+    val balances = remember(accounts, entries, transfers) {
+        WalletMath.balances(accounts, entries, transfers)
+    }
     val balance = WalletMath.usable(accounts, balances)
     val reserve = WalletMath.reserve(accounts, balances)
-    val now = System.currentTimeMillis()
-    val today = entries.filter { it.kind == "expense" && it.createdAt >= todayStart() && it.createdAt <= now }.sumOf { it.brlCents }
+    val today = totals.todayExpenseCents
     val budgetAlert = TripPlanningMath.calculate(balance, settings.dailyBudgetCents, settings.tripGoalCents,
         settings.plannedTripDays, settings.budgetAlertPercent, today).alert
     val autonomy = FinanceMath.autonomyDays(balance, settings.dailyBudgetCents)
-    val categories = expenseTotals(entries)
+    val categories = totals.categories
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = rememberLazyListState(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 25.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
@@ -191,7 +195,7 @@ fun DashboardScreen(
             item { Text("Defina os saldos iniciais na aba Carteiras e depois registre suas movimentações.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            items(entries.take(4), key = { it.id }) { entry -> EntryRow(entry, null) }
+            items(entries.take(4), key = { "recent-${it.id}" }, contentType = { "entry" }) { entry -> EntryRow(entry, null) }
         }
     }
 }
@@ -202,6 +206,22 @@ fun EntryRow(entry: Entry, onClick: (() -> Unit)?) {
     val originalDiffers = entry.currency != "BRL"
     val time = remember(entry.createdAt) {
         SimpleDateFormat("dd/MM/yyyy · HH:mm", Locale.forLanguageTag("pt-BR")).format(Date(entry.createdAt))
+    }
+    val itemSummary = remember(entry) {
+        entry.quantity?.let { qty ->
+            "$qty ${if (entry.itemKind == "cans") "latinhas" else "itens"}" +
+                (entry.unitMinor?.let { " × ${FinanceMath.format(it, entry.currency)}" } ?: "")
+        }.orEmpty()
+    }
+    val detail = remember(entry, itemSummary, time) {
+        listOf(itemSummary, entry.note, entry.city, entry.country)
+            .filter { it.isNotBlank() }.joinToString(" · ").ifBlank { time }
+    }
+    val formattedAmount = remember(entry.brlCents, entry.kind) {
+        (if (expense) "−" else "+") + FinanceMath.format(entry.brlCents)
+    }
+    val formattedOriginal = remember(entry.originalMinor, entry.currency) {
+        if (originalDiffers) FinanceMath.format(entry.originalMinor, entry.currency) else ""
     }
     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
@@ -216,159 +236,16 @@ fun EntryRow(entry: Entry, onClick: (() -> Unit)?) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(entry.category, color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val itemSummary = entry.quantity?.let { qty ->
-                    "$qty ${if (entry.itemKind == "cans") "latinhas" else "itens"}" +
-                        (entry.unitMinor?.let { " × ${FinanceMath.format(it, entry.currency)}" } ?: "")
-                }.orEmpty()
-                Text(listOf(itemSummary, entry.note, entry.city, entry.country)
-                    .filter { it.isNotBlank() }.joinToString(" · ").ifBlank { time }, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (originalDiffers) Text(FinanceMath.format(entry.originalMinor, entry.currency),
+                if (originalDiffers) Text(formattedOriginal,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text((if (expense) "−" else "+") + FinanceMath.format(entry.brlCents),
+            Text(formattedAmount,
                 color = if (expense) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
-@Composable
-fun HistoryScreen(entries: List<Entry>, onEdit: (Entry) -> Unit) {
-    var type by remember { mutableStateOf("Todos") }
-    var period by remember { mutableStateOf("Tudo") }
-    val start = remember(period) {
-        when (period) {
-            "Hoje" -> todayStart()
-            "7 dias" -> System.currentTimeMillis() - 7L * 86_400_000L
-            "30 dias" -> System.currentTimeMillis() - 30L * 86_400_000L
-            else -> 0L
-        }
-    }
-    val rows = remember(entries, type, start) {
-        entries.filter { it.createdAt >= start && (type == "Todos" ||
-            (type == "Despesas" && it.kind == "expense") || (type == "Receitas" && it.kind == "income")) }
-    }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("Histórico", fontSize = 25.sp, fontWeight = FontWeight.SemiBold) }
-        item { Text("Toque em um lançamento para editar ou excluir.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("Todos", "Despesas", "Receitas").forEach {
-                    FilterChip(selected = type == it, onClick = { type = it }, label = { Text(it) })
-                }
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("Tudo", "Hoje", "7 dias", "30 dias").forEach {
-                    FilterChip(selected = period == it, onClick = { period = it }, label = { Text(it) })
-                }
-            }
-        }
-        if (rows.isEmpty()) item {
-            EmptyState("Nenhum lançamento encontrado", "Experimente outro filtro ou adicione uma movimentação.",
-                Icons.Outlined.ReceiptLong)
-        }
-        items(rows, key = { it.id }) { e -> EntryRow(e, onClick = { onEdit(e) }) }
-    }
-}
-
-@Composable
-private fun SettingsTile(icon: ImageVector, label: String, description: String, onClick: () -> Unit) {
-    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f)) {
-                Text(label, fontWeight = FontWeight.Medium)
-                Text(description, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-fun SettingsScreen(
-    settings: Preferences, onSave: (Preferences) -> Unit,
-    onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit,
-    onAccounts: () -> Unit, onPlanning: () -> Unit
-) {
-    var budget by remember(settings.dailyBudgetCents) { mutableStateOf(FinanceMath.decimalInput(settings.dailyBudgetCents)) }
-    var error by remember { mutableStateOf("") }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(13.dp)) {
-        item { Text("Configurações", fontSize = 25.sp, fontWeight = FontWeight.SemiBold) }
-        item { SectionTitle("Aparência") }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("system" to "Sistema", "dark" to "Escuro", "light" to "Claro").forEach { (mode, title) ->
-                    FilterChip(selected = settings.themeMode == mode,
-                        onClick = { onSave(settings.copy(themeMode = mode)) }, label = { Text(title) })
-                }
-            }
-        }
-        item { SectionTitle("Planejamento financeiro") }
-        item { Text("O saldo inicial e a reserva são gerenciados por conta na aba Carteiras.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-        item { SettingsTile(Icons.Outlined.AccountBalanceWallet, "Carteiras e reserva", "Definir saldos iniciais e transferir entre contas", onAccounts) }
-        item { SettingsTile(Icons.Outlined.Flag, "Planejamento da viagem", "Meta, dias planejados e alertas do orçamento", onPlanning) }
-        item { MoneyField(value = budget, onValueChange = { budget = it },
-            label = "Orçamento diário", modifier = Modifier.fillMaxWidth()) }
-        if (error.isNotEmpty()) item { Text(error, color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall) }
-        item {
-            Button(onClick = {
-                val budgetCents = FinanceMath.parseAmount(budget)
-                if (budgetCents == null) {
-                    error = "Informe um orçamento válido em reais."
-                } else {
-                    error = ""
-                    onSave(settings.copy(dailyBudgetCents = budgetCents))
-                }
-            }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
-                Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(7.dp)); Text("Salvar valores")
-            }
-        }
-        item { HorizontalDivider() }
-        item { SectionTitle("Dados e backup") }
-        item { SettingsTile(Icons.Outlined.FileDownload, "Exportar backup JSON", "Salvar lançamentos e configurações no dispositivo", onBackup) }
-        item { SettingsTile(Icons.Outlined.FileUpload, "Restaurar backup JSON", "Substituir dados após confirmação", onImport) }
-        item { SettingsTile(Icons.Outlined.TableView, "Exportar CSV", "Abrir os lançamentos em planilhas", onCsv) }
-        item { Text("Os arquivos são escolhidos por você no seletor do Android. Não há sincronização automática.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-        item { HorizontalDivider() }
-        item { SettingsTile(Icons.Outlined.Info, "Sobre", "Versão, privacidade e funcionamento", onAbout) }
-        item { Spacer(Modifier.height(12.dp)) }
-    }
-}
-
-@Composable
-fun AboutScreen(onBack: () -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Voltar") } }
-        item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(54.dp)) }
-        item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.8 · versionCode 8", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item { SectionTitle("Sobre o aplicativo") }
-        item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, metas e orçamento diário.") }
-        item { SectionTitle("Novidades da alpha.8") }
-        item { Text("• Planejamento financeiro com meta de caixa para a viagem e dias planejados.\n• Previsão de custo calculada pelo orçamento diário e cobertura em dias.\n• Aviso local de aproximação ou estouro do limite de hoje, com percentual configurável.\n• Backup JSON atualizado para preservar os parâmetros de planejamento.") }
-        item { SectionTitle("Privacidade e dados") }
-        item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
-        item { SectionTitle("Moedas e taxas") }
-        item { Text("Os valores exibidos no painel são em reais. Lançamentos em outras moedas usam a taxa de câmbio informada manualmente na data do registro; o aplicativo não consulta cotações automaticamente.") }
-        item { SectionTitle("Autonomia") }
-        item { Text("A estimativa é saldo utilizável ÷ orçamento diário. O custo planejado é dias × orçamento, sem considerar receitas futuras. Nenhum valor de recicláveis ainda não vendidos é tratado como dinheiro disponível.") }
-        item { Text("Projeto inicial · Android nativo · Kotlin / Jetpack Compose", color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall) }
-    }
-}

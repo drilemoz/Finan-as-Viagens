@@ -2,6 +2,7 @@ package br.com.adriedson.financasdaviagem.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -34,7 +35,7 @@ fun ReportsScreen(entries: List<Entry>, onBack: () -> Unit) {
     val maxDaily = summary.lastSevenDays.maxOfOrNull { it.expenseCents } ?: 0L
     val daysFormat = remember { DateTimeFormatter.ofPattern("dd/MM", Locale.forLanguageTag("pt-BR")) }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(17.dp),
+    LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(17.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {

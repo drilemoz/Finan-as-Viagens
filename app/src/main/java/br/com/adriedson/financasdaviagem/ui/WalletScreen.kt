@@ -2,6 +2,7 @@ package br.com.adriedson.financasdaviagem.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,14 +36,24 @@ fun WalletScreen(
     var creating by remember { mutableStateOf(false) }
     var addingTransfer by remember { mutableStateOf(false) }
     var deleteTransfer by remember { mutableStateOf<WalletTransfer?>(null) }
-    val balances = remember(accounts, transfers, entries) {
-        runCatching { WalletMath.balances(accounts, entries, transfers) }.getOrDefault(emptyMap())
+    val balancesResult = remember(accounts, transfers, entries) {
+        runCatching {
+            val amounts = WalletMath.balances(accounts, entries, transfers)
+            Triple(amounts, WalletMath.usable(accounts, amounts), WalletMath.reserve(accounts, amounts))
+        }
     }
-    val usable = WalletMath.usable(accounts, balances)
-    val reserve = WalletMath.reserve(accounts, balances)
-    val names = accounts.associate { it.id to it.name }
+    if (balancesResult.isFailure) {
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Não foi possível calcular as carteiras", style = MaterialTheme.typography.titleLarge)
+            Text("Os saldos não foram substituídos por zeros. Preserve seus dados e verifique os lançamentos antes de continuar.",
+                color = MaterialTheme.colorScheme.error)
+        }
+        return
+    }
+    val (balances, usable, reserve) = balancesResult.getOrThrow()
+    val names = remember(accounts) { accounts.associate { it.id to it.name } }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(17.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(17.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text("Carteiras e contas", fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
@@ -78,7 +89,7 @@ fun WalletScreen(
             }
         }
         item { Text("Saldos por conta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-        items(accounts, key = { "account-${it.id}" }) { a ->
+        items(accounts, key = { "account-${it.id}" }, contentType = { "account" }) { a ->
             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
                 Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (a.isReserve) Icons.Outlined.Savings else Icons.Outlined.AccountBalanceWallet,
@@ -106,7 +117,11 @@ fun WalletScreen(
             Text("Nenhuma transferência. Movimentações entre contas não alteram o patrimônio total.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        items(transfers, key = { "transfer-${it.id}" }) { t ->
+        items(transfers, key = { "transfer-${it.id}" }, contentType = { "transfer" }) { t ->
+            val transferLabel = remember(t.cents, t.createdAt) {
+                FinanceMath.format(t.cents) + " · " + SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
+                    .format(Date(t.createdAt))
+            }
             Surface(shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.surface) {
                 Row(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 3.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -114,8 +129,7 @@ fun WalletScreen(
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("${names[t.fromId] ?: "?"} → ${names[t.toId] ?: "?"}", fontWeight = FontWeight.Medium)
-                        Text("${FinanceMath.format(t.cents)} · " + SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
-                            .format(Date(t.createdAt)), style = MaterialTheme.typography.bodySmall)
+                        Text(transferLabel, style = MaterialTheme.typography.bodySmall)
                         if (t.note.isNotBlank()) Text(t.note, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

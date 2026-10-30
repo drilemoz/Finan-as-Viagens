@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.adriedson.financasdaviagem"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.1.0-alpha.8"
+        versionCode = 11
+        versionName = "0.1.0-alpha.11"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -42,4 +42,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }

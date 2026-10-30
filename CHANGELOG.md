@@ -1,3 +1,30 @@
+## 0.1.0-alpha.11 (versionCode 11) — paginação e consistência dos dados
+
+- Histórico passa para paginação SQL de 60 itens, com filtros no banco, cursor estável por data/ID, carregamento incremental e opção de repetir consulta após falha.
+- Formulários de Recicláveis separados em `RecyclingEditors.kt`, sem mudança de regras de negócio.
+- SQLite **v6**: tabela `app_settings` adicionada; parâmetros existentes em SharedPreferences migrados sem excluir dados. Os parâmetros e movimentos agora são restaurados em uma única transação SQLite, removendo a divergência entre arquivos em falhas de restauração.
+- Mantido backup **JSON schema 6** e importação de schemas 1–6; testes locais SQL de páginas e rollback, mais testes instrumentados para migração/restauração (pendentes de execução em dispositivo).
+- VersionCode e workflow de APK sincronizados; build Android completo e teste de desempenho físico ainda pendentes.
+
+## 0.1.0-alpha.10 (versionCode 10) — refatoração e estabilidade
+
+- Extraídos `Models.kt`, `LedgerDb.kt` e `CsvExports.kt` de `FinanceRepository.kt`; sem mudanças no esquema persistido.
+- Consultas de saldo por conta no SQLite, dentro das transações, substituindo releitura completa de todos os registros para validar transferências.
+- Estados e refresh parcial separados em `FinanceUiStore.kt`, com controle de gerações por área e leitura fora da thread principal.
+- Split de `Screens.kt` em histórico, ajustes/sobre e painel; listas lazy mantidas.
+- Erros de saldo em Carteiras geram mensagem controlada em vez de mapa vazio seguido de exceção.
+- Mantidos SQLite v5, backup JSON v6, UI/temas e interfaces antigas.
+- Teste Python/SQLite em 100 cenários (16.000 operações), incluído na CI; teste instrumentado SQLite com 1.000 operações adicionado (execução em Android pendente). Validação estática e de lógica local; APK/benchmark em dispositivo pendentes.
+
+## 0.1.0-alpha.9 (2026-10-30) • versionCode 9
+
+- Reduzido trabalho de CPU nas telas longas: resumos do painel e de recicláveis consolidados em uma varredura e memorizações de totais, saldos e previsão.
+- Listas lazy agora informam tipos de item; rolagem preservada entre abas usando `SaveableStateHolder`.
+- Formatação monetária reutiliza `NumberFormat` em caches locais por thread, evitando criar formatadores em cada linha do histórico.
+- Removidas varreduras redundantes em contas e planejamento durante interações e recomposições; leituras de banco desatualizadas não sobrescrevem snapshots recentes.
+- Adicionados testes de equivalência do resumo e de integridade da matemática da reciclagem.
+- Sem alteração de dados, SQLite v5, backup JSON schema 6, temas ou recursos. Build e testes de fluidez em aparelho ainda pendentes.
+
 ## 0.1.0-alpha.8 (2026-10-27) • versionCode 8
 
 - Tela Planejamento: meta financeira, dias da cicloviagem, orçamento diário e limite de alerta (50 a 100%).

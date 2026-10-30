@@ -3,207 +3,27 @@ package br.com.adriedson.financasdaviagem.data
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
 import br.com.adriedson.financasdaviagem.core.BillMath
 import br.com.adriedson.financasdaviagem.core.FinanceMath
 import br.com.adriedson.financasdaviagem.core.RecyclingMath
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class Entry(
-    val id: Long = 0,
-    val kind: String = "expense",
-    val category: String = "Alimentação",
-    val note: String = "",
-    val city: String = "",
-    val country: String = "",
-    val currency: String = "BRL",
-    val originalMinor: Long = 0,
-    val rateBrl: String = "1",
-    val brlCents: Long = 0,
-    val createdAt: Long = System.currentTimeMillis(),
-    /** null = valor direto; cans/units = venda ou compra por unidade. */
-    val itemKind: String? = null,
-    val quantity: Int? = null,
-    val unitMinor: Long? = null,
-    val accountId: Long = 1L
-)
-
-/** units = can count for cans, grams for copper. Negative for sale/withdrawal. */
-data class RecyclingEvent(
-    val id: Long = 0,
-    val material: String,
-    val action: String,
-    val units: Long,
-    val measuredGrams: Long? = null,
-    val estimatedWeight: Boolean = false,
-    val priceCentsKg: Long? = null,
-    val receivedCents: Long? = null,
-    val financeEntryId: Long? = null,
-    val note: String = "",
-    val city: String = "",
-    val country: String = "",
-    val createdAt: Long = System.currentTimeMillis()
-)
-
-data class WalletAccount(
-    val id: Long = 0,
-    val name: String,
-    val openingCents: Long = 0,
-    val isReserve: Boolean = false
-)
-
-data class WalletTransfer(
-    val id: Long = 0,
-    val fromId: Long,
-    val toId: Long,
-    val cents: Long,
-    val note: String = "",
-    val createdAt: Long = System.currentTimeMillis()
-)
-
-/** Pending bill does not change the financial balance. Paying it creates one linked expense. */
-data class Bill(
-    val id: Long = 0,
-    val title: String,
-    val category: String = "Outros",
-    val amountCents: Long,
-    val dueDate: String,
-    val note: String = "",
-    val paidEntryId: Long? = null,
-    val createdAt: Long = System.currentTimeMillis()
-)
-
-data class Preferences(
-    val initialCents: Long = 0,
-    val reserveCents: Long = 0,
-    val dailyBudgetCents: Long = 4000,
-    val themeMode: String = "system",
-    val cansPerKg: Int = RecyclingMath.DEFAULT_CANS_PER_KG,
-    val cansPriceCentsKg: Long = RecyclingMath.DEFAULT_CANS_PRICE_CENTS_KG,
-    /** Zero means not configured. Goal applies only to non-reserve accounts. */
-    val tripGoalCents: Long = 0,
-    val plannedTripDays: Int = 0,
-    val budgetAlertPercent: Int = 80
-)
-
-val expenseCategories = listOf("Alimentação", "Bebidas", "Água", "Hospedagem", "Manutenção", "Saúde", "Transporte", "Equipamentos", "Imprevistos", "Outros")
-val incomeCategories = listOf("Economias", "Venda de latinhas", "Trabalho", "Doação", "Reembolso", "Outras receitas")
-
-private class LedgerDb(private val appContext: Context) : SQLiteOpenHelper(appContext, "financas_viagem.db", null, 5) {
-    override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("""CREATE TABLE entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kind TEXT NOT NULL CHECK(kind IN ('expense','income')),
-            category TEXT NOT NULL,
-            note TEXT NOT NULL DEFAULT '',
-            city TEXT NOT NULL DEFAULT '',
-            country TEXT NOT NULL DEFAULT '',
-            currency TEXT NOT NULL,
-            original_minor INTEGER NOT NULL CHECK(original_minor > 0),
-            rate_brl TEXT NOT NULL,
-            brl_cents INTEGER NOT NULL CHECK(brl_cents > 0),
-            created_at INTEGER NOT NULL,
-            item_kind TEXT,
-            quantity INTEGER,
-            unit_minor INTEGER,
-            account_id INTEGER NOT NULL DEFAULT 1
-        )""")
-        db.execSQL("CREATE INDEX idx_entries_time ON entries(created_at DESC)")
-        createRecycling(db)
-        createWalletTables(db)
-        createBills(db)
-    }
-    private fun createBills(db: SQLiteDatabase) {
-        db.execSQL("""CREATE TABLE bills (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
-            due_date TEXT NOT NULL,
-            note TEXT NOT NULL DEFAULT '',
-            paid_entry_id INTEGER UNIQUE,
-            created_at INTEGER NOT NULL
-        )""")
-        db.execSQL("CREATE INDEX idx_bills_due ON bills(due_date ASC, id DESC)")
-    }
-    private fun createRecycling(db: SQLiteDatabase) {
-        db.execSQL("""CREATE TABLE recycling_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            material TEXT NOT NULL CHECK(material IN ('cans','copper')),
-            action TEXT NOT NULL CHECK(action IN ('collect','sale','adjust')),
-            units INTEGER NOT NULL CHECK(units != 0),
-            measured_grams INTEGER,
-            estimated_weight INTEGER NOT NULL DEFAULT 0,
-            price_cents_kg INTEGER,
-            received_cents INTEGER,
-            finance_entry_id INTEGER UNIQUE,
-            note TEXT NOT NULL DEFAULT '',
-            city TEXT NOT NULL DEFAULT '',
-            country TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL
-        )""")
-        db.execSQL("CREATE INDEX idx_recycling_time ON recycling_events(created_at DESC, id DESC)")
-    }
-    private fun createWalletTables(db: SQLiteDatabase) {
-        db.execSQL("""CREATE TABLE accounts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            opening_cents INTEGER NOT NULL,
-            is_reserve INTEGER NOT NULL CHECK(is_reserve IN (0,1))
-        )""")
-        db.execSQL("""CREATE TABLE wallet_transfers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            from_id INTEGER NOT NULL,
-            to_id INTEGER NOT NULL,
-            cents INTEGER NOT NULL CHECK(cents > 0),
-            note TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL,
-            CHECK(from_id != to_id),
-            FOREIGN KEY(from_id) REFERENCES accounts(id),
-            FOREIGN KEY(to_id) REFERENCES accounts(id)
-        )""")
-        db.execSQL("CREATE INDEX idx_wallet_transfers_time ON wallet_transfers(created_at DESC)")
-        val prefs = appContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val initial = prefs.getLong("initial", 0L)
-        val reserve = prefs.getLong("reserve", 0L)
-        val main = Math.subtractExact(initial, reserve)
-        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(1,'Dinheiro físico',?,0)", arrayOf(main))
-        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(2,'Reserva de emergência',?,1)", arrayOf(reserve))
-        db.execSQL("INSERT INTO accounts(id,name,opening_cents,is_reserve) VALUES(3,'Banco / Pix',0,0)")
-    }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) {
-            db.execSQL("ALTER TABLE entries ADD COLUMN item_kind TEXT")
-            db.execSQL("ALTER TABLE entries ADD COLUMN quantity INTEGER")
-            db.execSQL("ALTER TABLE entries ADD COLUMN unit_minor INTEGER")
-        }
-        if (oldVersion < 3) createRecycling(db)
-        if (oldVersion < 4) {
-            db.execSQL("ALTER TABLE entries ADD COLUMN account_id INTEGER NOT NULL DEFAULT 1")
-            createWalletTables(db)
-        }
-        if (oldVersion < 5) createBills(db)
-        if (newVersion != 5 || oldVersion !in 1..4) error("Migração SQLite obrigatória: versão $oldVersion -> $newVersion")
-    }
-}
-
 /** Não usa internet; persistência local privada, sem permissões de armazenamento. */
-class FinanceRepository(context: Context) {
-    private val db = LedgerDb(context.applicationContext)
-    private val sp = context.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    fun settings(): Preferences = Preferences(
-        initialCents = sp.getLong("initial", 0),
-        reserveCents = sp.getLong("reserve", 0),
-        dailyBudgetCents = sp.getLong("budget", 4000),
-        themeMode = sp.getString("theme", "system")?.takeIf { it in listOf("system", "dark", "light") } ?: "system",
-        cansPerKg = sp.getInt("cansPerKg", 70).takeIf { it in 1..1000 } ?: 70,
-        cansPriceCentsKg = sp.getLong("cansPriceKg", 600).takeIf { it in 1..100_000_000 } ?: 600,
-        tripGoalCents = sp.getLong("tripGoal", 0).takeIf { it in 0..999_999_999_999L } ?: 0L,
-        plannedTripDays = sp.getInt("tripDays", 0).takeIf { it in 0..3650 } ?: 0,
-        budgetAlertPercent = sp.getInt("budgetAlert", 80).takeIf { it in 50..100 } ?: 80
-    )
+class FinanceRepository(context: Context, databaseName: String = "financas_viagem.db") {
+    private val db = LedgerDb(context.applicationContext, databaseName)
+    /** Configurações migradas para a mesma base SQLite dos lançamentos.
+     * Uma restauração usa uma única transação para registros e preferências.
+     */
+    fun settings(): Preferences = db.readableDatabase.rawQuery(
+        """SELECT initial_cents,reserve_cents,daily_budget_cents,theme_mode,cans_per_kg,
+            cans_price_cents_kg,trip_goal_cents,planned_trip_days,budget_alert_percent
+            FROM app_settings WHERE id=1""", null
+    ).use { c ->
+        check(c.moveToFirst()) { "Configurações não encontradas" }
+        Preferences(c.getLong(0), c.getLong(1), c.getLong(2), c.getString(3), c.getInt(4),
+            c.getLong(5), c.getLong(6), c.getInt(7), c.getInt(8))
+    }
 
     fun saveSettings(s: Preferences) {
         require(s.initialCents >= 0 && s.reserveCents >= 0 && s.dailyBudgetCents >= 0)
@@ -211,11 +31,46 @@ class FinanceRepository(context: Context) {
         require(s.cansPerKg in 1..1000 && s.cansPriceCentsKg in 1..100_000_000)
         require(s.dailyBudgetCents <= 999_999_999_999L && s.tripGoalCents in 0..999_999_999_999L)
         require(s.plannedTripDays in 0..3650 && s.budgetAlertPercent in 50..100)
-        check(sp.edit().putLong("initial", s.initialCents).putLong("reserve", s.reserveCents)
-            .putLong("budget", s.dailyBudgetCents).putString("theme", s.themeMode)
-            .putInt("cansPerKg", s.cansPerKg).putLong("cansPriceKg", s.cansPriceCentsKg)
-            .putLong("tripGoal", s.tripGoalCents).putInt("tripDays", s.plannedTripDays)
-            .putInt("budgetAlert", s.budgetAlertPercent).commit())
+        val values = ContentValues().apply {
+            put("initial_cents", s.initialCents); put("reserve_cents", s.reserveCents)
+            put("daily_budget_cents", s.dailyBudgetCents); put("theme_mode", s.themeMode)
+            put("cans_per_kg", s.cansPerKg); put("cans_price_cents_kg", s.cansPriceCentsKg)
+            put("trip_goal_cents", s.tripGoalCents); put("planned_trip_days", s.plannedTripDays)
+            put("budget_alert_percent", s.budgetAlertPercent)
+        }
+        check(db.writableDatabase.update("app_settings", values, "id=1", null) == 1)
+    }
+
+    data class HistoryPage(val entries: List<Entry>, val hasMore: Boolean)
+
+    /** Paginação estável por (created_at, id) em ordem decrescente.
+     * Evita ler todo o histórico para aplicar filtros de data/tipo.
+     */
+    fun historyPage(kind: String?, fromMillis: Long, beforeTime: Long?, beforeId: Long?, limit: Int = 60): HistoryPage {
+        require(kind == null || kind in listOf("expense", "income"))
+        require(limit in 1..200 && fromMillis >= 0)
+        require((beforeTime == null) == (beforeId == null))
+        val where = mutableListOf("created_at>=?")
+        val args = mutableListOf(fromMillis.toString())
+        if (kind != null) { where += "kind=?"; args += kind }
+        if (beforeTime != null && beforeId != null) {
+            where += "(created_at<? OR (created_at=? AND id<?))"
+            args += beforeTime.toString(); args += beforeTime.toString(); args += beforeId.toString()
+        }
+        args += (limit + 1).toString()
+        val result = mutableListOf<Entry>()
+        db.readableDatabase.rawQuery("""SELECT id,kind,category,note,city,country,currency,original_minor,
+            rate_brl,brl_cents,created_at,item_kind,quantity,unit_minor,account_id
+            FROM entries WHERE ${where.joinToString(" AND ")}
+            ORDER BY created_at DESC,id DESC LIMIT ?""", args.toTypedArray()).use { c ->
+            while (c.moveToNext()) result.add(Entry(c.getLong(0), c.getString(1), c.getString(2),
+                c.getString(3), c.getString(4), c.getString(5), c.getString(6), c.getLong(7),
+                c.getString(8), c.getLong(9), c.getLong(10),
+                if (c.isNull(11)) null else c.getString(11),
+                if (c.isNull(12)) null else c.getInt(12),
+                if (c.isNull(13)) null else c.getLong(13), c.getLong(14)))
+        }
+        return HistoryPage(result.take(limit), result.size > limit)
     }
 
     fun all(): List<Entry> {
@@ -334,8 +189,7 @@ class FinanceRepository(context: Context) {
         try {
             val ac = accounts()
             require(ac.any { it.id == t.fromId } && ac.any { it.id == t.toId }) { "Conta inexistente" }
-            val balances = br.com.adriedson.financasdaviagem.core.WalletMath.balances(ac, all(), transfers())
-            require((balances[t.fromId] ?: 0L) >= t.cents) { "Saldo insuficiente na origem" }
+            require(WalletBalanceQueries.balance(w, t.fromId) >= t.cents) { "Saldo insuficiente na origem" }
             val v = ContentValues().apply {
                 put("from_id", t.fromId); put("to_id", t.toId); put("cents", t.cents)
                 put("note", t.note); put("created_at", t.createdAt)
@@ -349,9 +203,9 @@ class FinanceRepository(context: Context) {
         val w = db.writableDatabase
         w.beginTransaction()
         try {
-            val existing = transfers().singleOrNull { it.id == id } ?: error("Transferência inexistente")
-            val currentBalances = br.com.adriedson.financasdaviagem.core.WalletMath.balances(accounts(), all(), transfers())
-            require((currentBalances[existing.toId] ?: 0L) >= existing.cents) {
+            val existing = w.rawQuery("SELECT to_id,cents FROM wallet_transfers WHERE id=?", arrayOf(id.toString()))
+                .use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) to cursor.getLong(1) else error("Transferência inexistente") }
+            require(WalletBalanceQueries.balance(w, existing.first) >= existing.second) {
                 "Saldo insuficiente no destino para desfazer a transferência"
             }
             check(w.delete("wallet_transfers", "id=?", arrayOf(id.toString())) == 1)
@@ -741,84 +595,17 @@ class FinanceRepository(context: Context) {
             backup.bills.forEach { b ->
                 writable.insertOrThrow("bills", null, billValues(b).apply { put("id", b.id) })
             }
-            // O banco é transacional. As preferências usam SharedPreferences e
-            // não possuem atomicidade conjunta em caso de interrupção do processo.
+            // Configurações e dados agora fazem parte da MESMA transação SQLite.
+            // Em falha antes do commit, ambos voltam ao estado anterior.
             saveSettings(backup.settings)
             writable.setTransactionSuccessful()
         } finally { writable.endTransaction() }
     }
 
-    fun exportCsv(): String {
-        fun escaped(x: String): String {
-            val safe = if (Regex("^[=+@-]").containsMatchIn(x.trimStart())) "'" + x else x
-            return "\"" + safe.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
-        }
-        return buildString {
-            append("data_iso;tipo;categoria;valor_original;moeda;taxa_brl;valor_brl;descricao;cidade;pais;tipo_item;quantidade;preco_unitario;conta_id\r\n")
-            all().forEach { e ->
-                val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(e.createdAt))
-                val cols = listOf(date, e.kind, e.category,
-                    FinanceMath.decimalInput(e.originalMinor, FinanceMath.digits(e.currency)), e.currency,
-                    e.rateBrl, FinanceMath.decimalInput(e.brlCents), e.note, e.city, e.country,
-                    e.itemKind ?: "", e.quantity?.toString() ?: "",
-                    e.unitMinor?.let { FinanceMath.decimalInput(it, FinanceMath.digits(e.currency)) } ?: "", e.accountId.toString())
-                append(cols.joinToString(";") { escaped(it) }); append("\r\n")
-            }
-        }
-    }
-    fun exportTransfersCsv(): String = buildString {
-        append("data_iso;origem;destino;valor_brl;descricao\r\n")
-        val names = accounts().associate { it.id to it.name }
-        transfers().forEach { t ->
-            fun cell(x: String): String = "\"" +
-                (if (Regex("^[=+@-]").containsMatchIn(x.trimStart())) "'" + x else x)
-                    .replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
-            val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT)
-                .format(java.util.Date(t.createdAt))
-            append(listOf(date, names[t.fromId] ?: "?", names[t.toId] ?: "?",
-                FinanceMath.decimalInput(t.cents), t.note).joinToString(";") { cell(it) })
-            append("\r\n")
-        }
-    }
-
-    /** Operational log CSV separate from financial CSV: collections never masquerade as income. */
-    fun exportRecyclingCsv(): String {
-        fun esc(value: String): String {
-            val x = if (Regex("^[=+@-]").containsMatchIn(value.trimStart())) "'" + value else value
-            return "\"" + x.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
-        }
-        return buildString {
-            append("data_iso;acao;material;variacao_estoque;unidade;peso_venda_g;peso_estimado;preco_centavos_kg;recebido_centavos;id_receita;descricao;cidade;pais\r\n")
-            recyclingEvents().forEach { e ->
-                val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT)
-                    .format(java.util.Date(e.createdAt))
-                val cols = listOf(date, e.action, e.material, e.units.toString(),
-                    if (e.material == "cans") "latinhas" else "gramas",
-                    e.measuredGrams?.toString() ?: "", e.estimatedWeight.toString(),
-                    e.priceCentsKg?.toString() ?: "", e.receivedCents?.toString() ?: "",
-                    e.financeEntryId?.toString() ?: "", e.note, e.city, e.country)
-                append(cols.joinToString(";") { esc(it) }); append("\r\n")
-            }
-        }
-    }
-
-    fun exportBillsCsv(): String = buildString {
-        append("vencimento;descricao;categoria;valor_brl;status;data_pagamento;conta_pagamento;observacao\r\n")
-        val entriesById = all().associateBy { it.id }
-        val names = accounts().associate { it.id to it.name }
-        fun esc(value: String): String = "\"" +
-            (if (Regex("^[=+@-]").containsMatchIn(value.trimStart())) "'" + value else value)
-                .replace("\"", "\"\"").replace("\r", " ").replace("\n", " ") + "\""
-        bills().forEach { bill ->
-            val entry = bill.paidEntryId?.let { entriesById[it] }
-            append(listOf(BillMath.displayDate(bill.dueDate), bill.title, bill.category,
-                FinanceMath.decimalInput(bill.amountCents), if (entry == null) "Pendente" else "Pago",
-                entry?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.forLanguageTag("pt-BR"))
-                    .format(java.util.Date(it.createdAt)) } ?: "",
-                entry?.let { names[it.accountId] } ?: "", bill.note).joinToString(";") { esc(it) })
-            append("\r\n")
-        }
-    }
+    fun exportCsv(): String = CsvExports(this).exportCsv()
+    fun exportTransfersCsv(): String = CsvExports(this).exportTransfersCsv()
+    fun exportRecyclingCsv(): String = CsvExports(this).exportRecyclingCsv()
+    fun exportBillsCsv(): String = CsvExports(this).exportBillsCsv()
 
 }
 

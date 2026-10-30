@@ -10,6 +10,8 @@ import java.util.Locale
 object FinanceMath {
     val localeBr = Locale.forLanguageTag("pt-BR")
     val supportedCurrencies = listOf("BRL", "ARS", "PYG", "UYU", "BOB", "CLP", "PEN")
+    // Cada thread mantém seus próprios formatadores: reutilização barata sem compartilhar NumberFormat mutável.
+    private val currencyFormatters = ThreadLocal.withInitial { mutableMapOf<String, NumberFormat>() }
     fun digits(currency: String) = if (currency == "PYG" || currency == "CLP") 0 else 2
 
     fun parseAmount(input: String, decimals: Int = 2): Long? {
@@ -42,10 +44,13 @@ object FinanceMath {
     }
 
     fun format(minor: Long, currency: String = "BRL"): String {
-        val formatter = NumberFormat.getCurrencyInstance(localeBr)
-        formatter.currency = Currency.getInstance(currency)
-        formatter.minimumFractionDigits = digits(currency)
-        formatter.maximumFractionDigits = digits(currency)
+        val formatter = currencyFormatters.get().getOrPut(currency) {
+            NumberFormat.getCurrencyInstance(localeBr).apply {
+                this.currency = Currency.getInstance(currency)
+                minimumFractionDigits = digits(currency)
+                maximumFractionDigits = digits(currency)
+            }
+        }
         return formatter.format(BigDecimal.valueOf(minor).movePointLeft(digits(currency)))
     }
 

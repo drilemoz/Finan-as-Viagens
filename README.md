@@ -1,6 +1,33 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.8 / versionCode 8** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.11 / versionCode 11** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Alpha.11: histórico paginado e backup transacional
+
+- Histórico consulta o SQLite por **lotes de 60 lançamentos**, aplicando filtros e cursor estável `(created_at, id)` no próprio SQL. O próximo lote é carregado ao rolar; em caso de erro, há botão de tentar novamente. A tela não filtra mais a lista inteira na composição.
+- Os formulários de coleta, venda, ajuste e parâmetros foram movidos de `RecyclingScreen.kt` para `RecyclingEditors.kt`, preservando as regras e o design anteriores.
+- Configurações deixam de ser atualizadas em SharedPreferences: uma **migração SQLite aditiva 5→6** importa os parâmetros existentes para `app_settings` e torna restauração de lançamentos e preferências **uma transação SQLite única**. Arquivos de backup JSON continuam no **schema 6**, aceitando 1–6.
+- Um banco de teste isolado é usado nos testes instrumentados, sem apagar o banco financeiro real. Testes de rolagem, restauração e upgrade em aparelho ainda são pendentes.
+- Nenhuma permissão nova, novo módulo financeiro ou mudança das operações de reciclagem.
+
+## Alpha.10: refatoração de estabilidade (sem novas funções)
+
+- Separação de modelos financeiros, criação/migração SQLite, exportações CSV e cálculo do saldo individual das carteiras em componentes próprios, preservando nomes de métodos e dados existentes.
+- Novo `FinanceUiStore`: leituras em `Dispatchers.IO`, atualização somente das áreas afetadas e descarte de respostas antigas por geração individual. Uma transferência não relê reciclagem, contas a pagar e todo o histórico.
+- Transferências verificam o saldo da conta com consulta SQLite `SUM` na transação ativa, evitando materializar listas completas de lançamentos/transferências para validar cada operação.
+- Carteiras exibe aviso de erro em vez de cair por usar mapa vazio se o cálculo falhar.
+- História e Ajustes/Sobre organizados em arquivos próprios. `LazyColumn` e temas preservados.
+- **Sem migração:** SQLite v5 e JSON v6; nenhuma alteração de tabelas, nomes de chaves ou IDs. Não remover dados nem desinstalar antes do backup.
+- Teste SQL com 16.000 operações incluído em `tools/verify_refactor.py` e no GitHub Actions. Teste instrumentado Android de saldo SQL com 1.000 operações incluído, mas ainda não executado em emulador ou aparelho. Não há medição de FPS; testar rolagem longa com milhares de lançamentos e repetir após APK de CI.
+
+## Novidades na alpha.9: fluidez de rolagem e estabilidade
+
+- Painel: receitas, despesas, doações, total diário e categorias em **uma passagem** pelo histórico, calculados apenas após mudança nos dados. Saldo por conta também é memorizado; não é recalculado quando a tela apenas recompõe.
+- Recicláveis: resumo de estoque, coletas, vendas, cobre e pagamentos consolidado em **uma passagem** pelos eventos e reaproveitado até ocorrerem alterações.
+- Carteiras, contas a pagar e planejamento: nomes, totais, saldos e despesas do dia não são varridos novamente a cada interação do formulário.
+- Histórico/recicláveis/carteiras/contas: `LazyColumn` com tipos de linha explícitos para melhor reutilização de itens; rolagem preservada entre telas via `SaveableStateHolder`.
+- Moedas: `NumberFormat` reutilizado **por thread e por moeda**, sem acessar formatadores mutáveis entre threads. Dados persistidos continuam inteiros e cálculos não mudaram.
+- Nenhuma permissão adicional, migração SQLite ou mudança de backup (SQLite v5, JSON schema 6). Testar especialmente em aparelho físico e usando listas longas. Veja `docs/PERFORMANCE.md` para diagnóstico e roteiro de medição.
 
 ## Novidades na alpha.8: planejamento da cicloviagem 🚴📅
 
@@ -90,7 +117,7 @@ Limitações atuais: sem login, sem sincronização com contas bancárias, sem G
 ## Estrutura
 
 - `app/src/main/java/.../core/FinanceMath.kt`: centavos, parsing, taxa e autonomia.
-- `.../data/FinanceRepository.kt`: persistência SQLite, contas, estoque, vínculos de receita, backup e CSV.
+- `.../data/FinanceRepository.kt`: operações financeiras, paginação SQL, contas, estoque e backup; `LedgerDb.kt`: estrutura e migração SQLite; `RecyclingEditors.kt`: formulários de reciclagem.
 - `.../ui`: tema, painel, histórico, edição, configurações e Sobre.
 - `.github/workflows/android.yml`: testes e APK Debug via CI.
 - `.../core/RecyclingMath.kt`: estimativas de peso, cálculo por kg e validações inteiras.

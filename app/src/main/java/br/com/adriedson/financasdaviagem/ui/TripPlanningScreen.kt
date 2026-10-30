@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -39,19 +40,24 @@ fun TripPlanningScreen(
     var alertPercent by remember(settings.budgetAlertPercent) { mutableIntStateOf(settings.budgetAlertPercent) }
     var validationError by remember { mutableStateOf("") }
 
-    val balances = WalletMath.balances(accounts, entries, transfers)
+    // Não repetir varreduras de todas as transações enquanto o usuário edita a meta.
+    val balances = remember(accounts, entries, transfers) { WalletMath.balances(accounts, entries, transfers) }
     val usable = WalletMath.usable(accounts, balances)
     val reserve = WalletMath.reserve(accounts, balances)
-    val today = LocalDate.now()
-    val start = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    val now = System.currentTimeMillis()
-    val todaySpent = entries.asSequence()
-        .filter { it.kind == "expense" && it.createdAt >= start && it.createdAt <= now }
-        .fold(0L) { sum, e -> Math.addExact(sum, e.brlCents) }
-    val plan = TripPlanningMath.calculate(usable, settings.dailyBudgetCents,
-        settings.tripGoalCents, settings.plannedTripDays, settings.budgetAlertPercent, todaySpent)
-
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
+    val todayDate = LocalDate.now()
+    val todaySpent = remember(entries, todayDate) {
+        val today = todayDate
+        val start = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val now = System.currentTimeMillis()
+        entries.asSequence().filter { it.kind == "expense" && it.createdAt >= start && it.createdAt <= now }
+            .fold(0L) { sum, e -> Math.addExact(sum, e.brlCents) }
+    }
+    val plan = remember(usable, settings.dailyBudgetCents, settings.tripGoalCents,
+        settings.plannedTripDays, settings.budgetAlertPercent, todaySpent) {
+        TripPlanningMath.calculate(usable, settings.dailyBudgetCents, settings.tripGoalCents,
+            settings.plannedTripDays, settings.budgetAlertPercent, todaySpent)
+    }
+    LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {

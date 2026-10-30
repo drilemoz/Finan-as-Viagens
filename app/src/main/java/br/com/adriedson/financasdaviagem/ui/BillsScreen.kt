@@ -2,6 +2,7 @@ package br.com.adriedson.financasdaviagem.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -39,13 +40,16 @@ fun BillsScreen(
     var editing by remember { mutableStateOf<Bill?>(null) }
     var paying by remember { mutableStateOf<Bill?>(null) }
     var deleting by remember { mutableStateOf<Bill?>(null) }
-    val pending = bills.filter { it.paidEntryId == null }
-    val overdue = pending.count { BillMath.isOverdue(it.dueDate) }
-    val pendingTotal = pending.sumOf { it.amountCents }
-    val paidTotal = bills.filter { it.paidEntryId != null }.sumOf { it.amountCents }
+    val pending = remember(bills) { bills.filter { it.paidEntryId == null } }
+    val overdue = remember(pending, java.time.LocalDate.now()) {
+        pending.count { BillMath.isOverdue(it.dueDate) }
+    }
+    val pendingTotal = remember(pending) { pending.sumOf { it.amountCents } }
+    val paidTotal = remember(bills) { bills.asSequence().filter { it.paidEntryId != null }.sumOf { it.amountCents } }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = rememberLazyListState(),
         contentPadding = PaddingValues(horizontal = 17.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -89,7 +93,7 @@ fun BillsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        items(bills, key = { it.id }) { bill ->
+        items(bills, key = { it.id }, contentType = { "bill" }) { bill ->
             val isPaid = bill.paidEntryId != null
             val late = !isPaid && BillMath.isOverdue(bill.dueDate)
             Surface(shape = RoundedCornerShape(17.dp), color = MaterialTheme.colorScheme.surface) {

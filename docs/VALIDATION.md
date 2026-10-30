@@ -68,3 +68,17 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Confirmar backup JSON schema 6 e restauração de schema 1–5 com novos parâmetros zerados/default; o SQLite permanece v5.
 - Conferir temas claro/escuro, teclado monetário, metas zero, dias zero e aparelhos estreitos.
 - Não houve compilação Android completa nem testes instrumentados; a compatibilidade real deverá ser confirmada pelo workflow GitHub Actions e atualização com backup prévio.
+
+## alpha.9 (2026-10-30)
+
+- Validar código-fonte, sintaxe de todos os Kotlin, correção dos resumos em centavos (incluindo estoque de latinhas e cobre), formatos BRL/ARS/PYG e integridade do ZIP.
+- Em celular real: observar rolagem no histórico com centenas/milhares de lançamentos, Recicláveis com muitos eventos, Carteiras e Contas a pagar. Alternar abas e verificar que a posição de rolagem é preservada.
+- Recomendar comparar `adb shell dumpsys gfxinfo br.com.adriedson.financasdaviagem framestats` antes/depois com **mesma quantidade de dados** e build equivalente; não atribuir FPS ou melhoria numérica sem teste.
+- Verificar atualização de saldo, metas, alertas e estoque após salvar/excluir; mudança de dia; rolagem no tema claro e escuro. SQLite v5 e backup JSON schema 6 permanecem intactos.
+- Gradle Android, teste de telas e métricas de desempenho reais estão pendentes no ambiente local.
+
+## 0.1.0-alpha.11
+
+- `python3 tools/verify_alpha11.py`: validar paginação SQL por cursor/filtros e rollback da transação combinada; `python3 tools/verify_refactor.py` mantém teste de saldos.
+- Teste instrumentado `SettingsMigrationAndRestoreTest` verifica migração 5→6 de banco isolado e restauração com rollback após falha intencional na gravação dos parâmetros. **Ainda não executado em dispositivo/emulador**.
+- Android build completo e FPS em celular **pendentes**. Antes de atualizar, criar backup JSON e não desinstalar o app para manter dados locais.

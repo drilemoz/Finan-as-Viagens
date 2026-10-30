@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.toArgb
@@ -43,37 +44,25 @@ private fun FinanceApp(activity: ComponentActivity) {
     val context = LocalContext.current
     val repo = remember { FinanceRepository(context) }
     val scope = rememberCoroutineScope()
-    var settings by remember { mutableStateOf(repo.settings()) }
-    var entries by remember { mutableStateOf(emptyList<Entry>()) }
-    var recycling by remember { mutableStateOf(emptyList<RecyclingEvent>()) }
-    var accounts by remember { mutableStateOf(emptyList<WalletAccount>()) }
-    var transfers by remember { mutableStateOf(emptyList<WalletTransfer>()) }
-    var bills by remember { mutableStateOf(emptyList<Bill>()) }
+    val store = remember { FinanceUiStore(repo) }
+    val settings = store.settings
+    val entries = store.entries
+    val recycling = store.recycling
+    val accounts = store.accounts
+    val transfers = store.transfers
+    val bills = store.bills
     var screen by remember { mutableStateOf("home") }
+    val screenStateHolder = rememberSaveableStateHolder()
     var editing by remember { mutableStateOf<Entry?>(null) }
     var addKind by remember { mutableStateOf<String?>(null) }
     var addCategory by remember { mutableStateOf<String?>(null) }
     var pendingImport by remember { mutableStateOf<FinanceRepository.Backup?>(null) }
     val notify: (String) -> Unit = { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
 
-    fun refresh() {
+    fun refresh(vararg areas: FinanceArea) {
         scope.launch {
-            try {
-                val loaded = withContext(Dispatchers.IO) {
-                    listOf(repo.all(), repo.settings(), repo.recyclingEvents(), repo.accounts(), repo.transfers(), repo.bills())
-                }
-                @Suppress("UNCHECKED_CAST")
-                entries = loaded[0] as List<Entry>
-                settings = loaded[1] as br.com.adriedson.financasdaviagem.data.Preferences
-                @Suppress("UNCHECKED_CAST")
-                recycling = loaded[2] as List<RecyclingEvent>
-                @Suppress("UNCHECKED_CAST")
-                accounts = loaded[3] as List<WalletAccount>
-                @Suppress("UNCHECKED_CAST")
-                transfers = loaded[4] as List<WalletTransfer>
-                @Suppress("UNCHECKED_CAST")
-                bills = loaded[5] as List<Bill>
-            } catch (t: Exception) { notify("Não foi possível ler os dados: ${t.message}") }
+            try { store.reload(*areas) }
+            catch (t: Exception) { notify("Não foi possível ler os dados: ${t.message}") }
         }
     }
 
@@ -81,7 +70,7 @@ private fun FinanceApp(activity: ComponentActivity) {
         scope.launch {
             try {
                 withContext(Dispatchers.IO) { repo.saveSettings(next) }
-                settings = next
+                store.applySettings(next)
                 notify("Configurações salvas")
             } catch (t: Exception) { notify("Erro ao salvar: ${t.message}") }
         }
@@ -204,6 +193,7 @@ private fun FinanceApp(activity: ComponentActivity) {
             }
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
+                screenStateHolder.SaveableStateProvider(screen) {
                 when (screen) {
                     "home" -> DashboardScreen(entries, settings, accounts, transfers,
                         onAddExpense = { addKind = "expense" },
@@ -217,7 +207,9 @@ private fun FinanceApp(activity: ComponentActivity) {
                     "reports" -> ReportsScreen(entries, onBack = { screen = "home" })
                     "planning" -> TripPlanningScreen(settings, entries, accounts, transfers,
                         onSave = ::saveSettings, onBack = { screen = "home" })
-                    "history" -> HistoryScreen(entries, onEdit = { entry ->
+                    "history" -> HistoryScreen(entries, loadPage = { kind, since, beforeTime, beforeId, limit ->
+                        withContext(Dispatchers.IO) { repo.historyPage(kind, since, beforeTime, beforeId, limit) }
+                    }, onEdit = { entry ->
                         scope.launch {
                             if (withContext(Dispatchers.IO) { repo.isManagedEntry(entry.id) }) {
                                 notify("Registro vinculado: gerencie na aba Recicláveis ou em Contas a pagar.")
@@ -230,7 +222,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                             scope.launch {
                                 try {
                                     withContext(Dispatchers.IO) { repo.addRecyclingEvent(event, accountId) }
-                                    refresh(); complete(true)
+                                    refresh(FinanceArea.ENTRIES, FinanceArea.RECYCLING); complete(true)
                                     notify(if (event.action == "sale") "Venda e receita de Trabalho registradas" else "Estoque atualizado")
                                 } catch (t: Exception) { complete(false); notify("Falha na reciclagem: ${t.message}") }
                             }
@@ -239,7 +231,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                             scope.launch {
                                 try {
                                     withContext(Dispatchers.IO) { repo.deleteRecyclingEvent(id) }
-                                    refresh(); notify("Registro excluído")
+                                    refresh(FinanceArea.ENTRIES, FinanceArea.RECYCLING); notify("Registro excluído")
                                 } catch (t: Exception) { notify("Não foi possível excluir: ${t.message}") }
                             }
                         },
@@ -247,32 +239,32 @@ private fun FinanceApp(activity: ComponentActivity) {
                         onExport = { recyclingCsvLauncher.launch("financas-da-viagem-reciclagem.csv") })
                     "wallets" -> WalletScreen(accounts, transfers, entries,
                         onSaveAccount = { account -> scope.launch {
-                            try { withContext(Dispatchers.IO) { repo.saveAccount(account) }; refresh(); notify("Conta salva") }
+                            try { withContext(Dispatchers.IO) { repo.saveAccount(account) }; refresh(FinanceArea.ACCOUNTS); notify("Conta salva") }
                             catch (t: Exception) { notify("Erro na conta: ${t.message}") }
                         } },
                         onTransfer = { transfer -> scope.launch {
-                            try { withContext(Dispatchers.IO) { repo.addTransfer(transfer) }; refresh(); notify("Transferência registrada") }
+                            try { withContext(Dispatchers.IO) { repo.addTransfer(transfer) }; refresh(FinanceArea.TRANSFERS); notify("Transferência registrada") }
                             catch (t: Exception) { notify("Falha na transferência: ${t.message}") }
                         } },
                         onBills = { screen = "bills" },
                         onDeleteTransfer = { id -> scope.launch {
-                            try { withContext(Dispatchers.IO) { repo.deleteTransfer(id) }; refresh(); notify("Transferência excluída") }
+                            try { withContext(Dispatchers.IO) { repo.deleteTransfer(id) }; refresh(FinanceArea.TRANSFERS); notify("Transferência excluída") }
                             catch (t: Exception) { notify("Falha ao excluir: ${t.message}") }
                         } }, onExport = { walletCsvLauncher.launch("financas-da-viagem-transferencias.csv") })
                     "bills" -> BillsScreen(bills, accounts,
                         onBack = { screen = "wallets" },
                         onSave = { bill -> scope.launch {
-                            try { withContext(Dispatchers.IO) { repo.saveBill(bill) }; refresh(); notify("Conta salva") }
+                            try { withContext(Dispatchers.IO) { repo.saveBill(bill) }; refresh(FinanceArea.BILLS); notify("Conta salva") }
                             catch (t: Exception) { notify("Falha ao salvar conta: ${t.message}") }
                         } },
                         onPay = { id, accountId, complete -> scope.launch {
                             try {
                                 withContext(Dispatchers.IO) { repo.payBill(id, accountId) }
-                                refresh(); complete(true); notify("Pagamento lançado como despesa")
+                                refresh(FinanceArea.BILLS, FinanceArea.ENTRIES); complete(true); notify("Pagamento lançado como despesa")
                             } catch (t: Exception) { complete(false); notify("Falha no pagamento: ${t.message}") }
                         } },
                         onDelete = { id -> scope.launch {
-                            try { withContext(Dispatchers.IO) { repo.deleteBill(id) }; refresh(); notify("Conta excluída") }
+                            try { withContext(Dispatchers.IO) { repo.deleteBill(id) }; refresh(FinanceArea.BILLS); notify("Conta excluída") }
                             catch (t: Exception) { notify("Falha ao excluir: ${t.message}") }
                         } },
                         onExport = { billsCsvLauncher.launch("financas-da-viagem-contas-a-pagar.csv") })
@@ -287,6 +279,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                         onPlanning = { screen = "planning" })
                     "about" -> AboutScreen(onBack = { screen = "settings" })
                 }
+                }
             }
         }
         if (addKind != null || editing != null) {
@@ -297,7 +290,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                     scope.launch {
                         try {
                             withContext(Dispatchers.IO) { repo.save(entry) }
-                            editing = null; addKind = null; addCategory = null; refresh()
+                            editing = null; addKind = null; addCategory = null; refresh(FinanceArea.ENTRIES)
                             notify("Lançamento salvo")
                         } catch (t: Exception) { notify("Erro ao salvar: ${t.message}") }
                     }
@@ -306,7 +299,7 @@ private fun FinanceApp(activity: ComponentActivity) {
                     scope.launch {
                         try {
                             withContext(Dispatchers.IO) { repo.delete(entry.id) }
-                            editing = null; addKind = null; addCategory = null; refresh()
+                            editing = null; addKind = null; addCategory = null; refresh(FinanceArea.ENTRIES)
                             notify("Lançamento excluído")
                         } catch (t: Exception) { notify("Erro ao excluir: ${t.message}") }
                     }

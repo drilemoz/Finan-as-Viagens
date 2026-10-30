@@ -31,3 +31,16 @@
 - Planejamento deriva somente do saldo das contas não-reserva; não misturar transferências, recicláveis não vendidos ou contas a pagar pendentes com dinheiro recebido.
 - Sem notificações do sistema: avisos de limite aparecem no app; nunca prometer alertas em background.
 - Versionar alpha.8 (versionCode 8), documentação, Sobre e nome do Artifact.
+
+- Alpha.9: preservar SQLite v5 e backup JSON schema 6, versionCode 9. Manter resumos de UI em `ScreenSummaries` em centavos inteiros, memorizar cálculos dependentes de listas com `remember` e dar `contentType` aos itens `LazyColumn` homogêneos.
+- `NumberFormat` é mutável e não thread-safe: usar cache local por thread, nunca singleton compartilhado entre threads.
+- Estados de rolagem salvos por tela; não transformar listas lazy em `Column.verticalScroll` com centenas de itens.
+- Perfis de fluidez reais dependem de medição no aparelho (jank/FrameTimeline); testes sintáticos não comprovam FPS.
+
+- Alpha.10: `Models`, `LedgerDb`, `CsvExports` e `WalletBalanceQueries` isolados, API pública do repositório preservada.
+- `FinanceUiStore` atualiza slices isoladas com geração individual por tipo e leitura fora da UI; não perder estado novo por carga assíncrona antiga.
+- Não mostrar saldos como zero diante de falha de cálculo; apresentar aviso controlado. SQLite e JSON mantidos em v5/v6, sem migrações.
+
+- Alpha.11 (versionCode 11): `LedgerDb` SQLite v6 com tabela única `app_settings` que recebe preferências legadas em migração 5→6; dados financeiros e configurações devem ser restaurados na mesma transação SQLite. Não gravar novas preferências financeiras em SharedPreferences.
+- Manter o backup JSON schema 6 e compatibilidade importação 1–6. Histórico usa paginação `historyPage` por `(created_at DESC,id DESC)`, páginas de até 60, com filtros no SQL; não carregar todas as entradas para construir a tela Histórico.
+- `RecyclingEditors.kt` concentra os formulários sem alterar regras de coleta/venda. Testes Android devem usar banco isolado; nunca excluir o banco de produção durante instrumentação.
