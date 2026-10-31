@@ -1,0 +1,72 @@
+name: Google Play - AAB Release assinado
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-play:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Instalar Android 16 e Build Tools
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Verificar integridade de código e configuração da Play
+        run: |
+          python3 tools/verify_refactor.py
+          python3 tools/verify_alpha11.py
+          python3 tools/verify_alpha12.py
+          python3 tools/verify_play.py
+      - name: Testar e gerar AAB e APK Release assinados
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for var in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!var:-}" ]]; then echo "Secret ausente: $var" >&2; exit 1; fi
+          done
+          umask 077
+          export SIGNING_KEYSTORE_FILE="$RUNNER_TEMP/financas-upload.p12"
+          trap 'rm -f "$SIGNING_KEYSTORE_FILE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$SIGNING_KEYSTORE_FILE"
+          test -s "$SIGNING_KEYSTORE_FILE"
+          # Falha antes do build se o alias ou a senha não corresponderem à chave.
+          keytool -list -keystore "$SIGNING_KEYSTORE_FILE" -storetype PKCS12 \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          gradle --no-daemon :app:testDebugUnitTest :app:bundleRelease :app:assembleRelease
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$AAB" && test -s "$APK"
+          jarsigner -verify "$AAB" | grep -q 'jar verified'
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
+          # Somente artefatos públicos; nunca exportar chave ou secrets.
+          mkdir -p release-output
+          cp "$AAB" "release-output/Financas-da-Viagem-v1.0.0-Play.aab"
+          cp "$APK" "release-output/Financas-da-Viagem-v1.0.0-Release.apk"
+      - name: Disponibilizar AAB e APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Financas-da-Viagem-v1.0.0-Google-Play
+          path: release-output/*
+          if-no-files-found: error

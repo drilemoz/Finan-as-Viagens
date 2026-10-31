@@ -53,7 +53,7 @@ private fun SettingsTile(icon: ImageVector, label: String, description: String, 
 fun SettingsScreen(
     settings: Preferences, onSave: (Preferences) -> Unit,
     onBackup: () -> Unit, onImport: () -> Unit, onCsv: () -> Unit, onAbout: () -> Unit,
-    onAccounts: () -> Unit, onPlanning: () -> Unit
+    onAccounts: () -> Unit, onPlanning: () -> Unit, onPrivacy: () -> Unit
 ) {
     var budget by remember(settings.dailyBudgetCents) { mutableStateOf(FinanceMath.decimalInput(settings.dailyBudgetCents)) }
     var error by remember { mutableStateOf("") }
@@ -99,24 +99,26 @@ fun SettingsScreen(
         item { Text("Os arquivos são escolhidos por você no seletor do Android. Não há sincronização automática.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         item { HorizontalDivider() }
+        item { SettingsTile(Icons.Outlined.PrivacyTip, "Política de privacidade", "Leia como os dados financeiros são tratados", onPrivacy) }
         item { SettingsTile(Icons.Outlined.Info, "Sobre", "Versão, privacidade e funcionamento", onAbout) }
         item { Spacer(Modifier.height(12.dp)) }
     }
 }
 
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onPrivacy: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Voltar") } }
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 0.1.0-alpha.12 · versionCode 12", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 1.0.0 · versionCode 13", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
         item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, metas e orçamento diário.") }
-        item { SectionTitle("Novidades da alpha.10") }
-        item { Text("• Estado da interface separado das telas e leituras do banco por área.\n• Transferências com consultas pontuais de saldo no SQLite.\n• Modelos, SQLite e exportações CSV organizados em arquivos próprios.\n• Sem migração do banco nem mudanças nos dados financeiros.") }
+        item { SectionTitle("Novidades da versão 1.0.0") }
+        item { Text("• Compatibilidade com Android 16 (API 36).\n• Interface adaptada às barras do sistema.\n• Política de privacidade acessível no aplicativo.\n• Preparação para distribuição por Google Play, sem alterar cálculos ou dados financeiros.") }
+        item { TextButton(onClick = onPrivacy) { Icon(Icons.Outlined.PrivacyTip, null); Spacer(Modifier.width(8.dp)); Text("Ler política de privacidade") } }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }
         item { SectionTitle("Moedas e taxas") }

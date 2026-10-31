@@ -47,3 +47,7 @@
 
 - Alpha.12 (versionCode 12): compactação somente da UI inicial; botões Receita e Doação compartilham superfície, mas mantêm callbacks distintos. Planejar, Relatórios e Gerenciar têm atalhos individuais lado a lado e toque mínimo 72 dp. Não reduzir áreas clicáveis abaixo de 48 dp nem alterar regras financeiras.
 - Preservar SQLite v6 e backup JSON schema 6. Testar modo claro/escuro e diferentes larguras antes de afirmar melhora visual comprovada no Android.
+
+- 1.0.0 (versionCode 13): `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`; preservar `applicationId` e compatibilidade SQLite v6 / JSON v6.
+- Para Google Play, gerar AAB Release assinado com os quatro Secrets existentes e Play App Signing; não inserir keystores/Secrets no repositório, artifacts, prints ou logs. Não gerar nova chave sem necessidade.
+- Antes de declarar pronto para publicação, verificar builds, AAB assinado e Play Console, privacidade HTTPS pública, declaração de dados, recursos financeiros, imagem e screenshots; versão 1.0.0 não implica aprovação da Play.

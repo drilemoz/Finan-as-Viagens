@@ -3,6 +3,7 @@ package br.com.adriedson.financasdaviagem
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import br.com.adriedson.financasdaviagem.data.Bill
 import br.com.adriedson.financasdaviagem.data.WalletAccount
@@ -35,6 +35,7 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent { FinanceApp(this) }
     }
 }
@@ -166,15 +167,11 @@ private fun FinanceApp(activity: ComponentActivity) {
         val scheme = MaterialTheme.colorScheme
         val isLight = scheme.background.red > 0.5f
         SideEffect {
-            @Suppress("DEPRECATION")
-            activity.window.statusBarColor = scheme.background.toArgb()
-            @Suppress("DEPRECATION")
-            activity.window.navigationBarColor = scheme.background.toArgb()
             WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightStatusBars = isLight
             WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightNavigationBars = isLight
         }
         BackHandler(enabled = screen != "home" && addKind == null && editing == null) {
-            screen = when (screen) { "about" -> "settings"; "bills" -> "wallets"; else -> "home" }
+            screen = when (screen) { "about" -> "settings"; "privacy" -> "settings"; "bills" -> "wallets"; else -> "home" }
         }
         Scaffold(containerColor = scheme.background,
             bottomBar = {
@@ -275,9 +272,10 @@ private fun FinanceApp(activity: ComponentActivity) {
                         },
                         onImport = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                         onCsv = { csvLauncher.launch("financas-da-viagem-lancamentos.csv") },
-                        onAbout = { screen = "about" }, onAccounts = { screen = "wallets" },
+                        onAbout = { screen = "about" }, onPrivacy = { screen = "privacy" }, onAccounts = { screen = "wallets" },
                         onPlanning = { screen = "planning" })
-                    "about" -> AboutScreen(onBack = { screen = "settings" })
+                    "about" -> AboutScreen(onBack = { screen = "settings" }, onPrivacy = { screen = "privacy" })
+                    "privacy" -> PrivacyPolicyScreen(onBack = { screen = "settings" })
                 }
                 }
             }

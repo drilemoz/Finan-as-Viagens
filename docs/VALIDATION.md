@@ -89,3 +89,11 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - Confirmar UI estática: controles unificados de Receita/Doação, três atalhos lado a lado, estado vazio compacto e áreas clicáveis >=48 dp.
 - **Pendente em aparelho:** inspecionar modo claro/escuro, fonte ampliada, telas estreitas, rolagem e toque em cada ação; sem benchmark de FPS nem build Android local.
 - Sem migração: SQLite v6 e backup JSON schema 6 preservados.
+
+## 1.0.0 (Google Play/API 36)
+
+- `python3 tools/verify_play.py` valida SDK/versão, permissões, assinatura CI, política em app, documentação e manutenção de SQLite/JSON.
+- `python3 tools/verify_refactor.py`, `tools/verify_alpha11.py`, `tools/verify_alpha12.py`: regressão local dos cálculos, paginação e layout.
+- APK Debug e AAB Release **não foram compilados aqui**: ambiente sem Android SDK/Gradle distribuídos. O workflow do GitHub Actions deve ser executado com Secrets. Testar migração/backup, bordas, barras do sistema, teclado e rotação em Android 16 e aparelhos estreitos.
+- Comparar a assinatura do certificado de upload com o cadastro do Play App Signing. APK Debug antigo não atualiza com assinatura nova (e APK vindo da Google Play pode usar a chave de assinatura da Play, distinta da chave de upload).
+- Inspecionar as dependências do AAB/`lib/*.so` e verificar 16 KB caso haja bibliotecas nativas; não presumir conformidade por análise de Kotlin apenas.

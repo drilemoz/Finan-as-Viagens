@@ -1,6 +1,16 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.12 / versionCode 12** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **1.0.0 / versionCode 13** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Versão 1.0.0: preparação Google Play (Android 16)
+
+- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26` e `versionCode = 13`; sem troca do pacote Android.
+- Geração de **AAB Release assinado**, além de APK Release para instalação manual, por `.github/workflows/android-play.yml` no GitHub Actions, usando os mesmos quatro Secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD` já criados no GitHub Manager. O certificado é usado como **chave de upload**; a assinatura dos APKs distribuídos pela loja deve ser gerenciada pelo Google Play App Signing. Nunca commitar `.env`, `.p12`, `.jks` ou keystore.
+- Compatibilidade com telas ponta a ponta no Android 16: `enableEdgeToEdge()` e ajuste de teclado (`adjustResize`), com ícones das barras claros/escuros conforme o tema. A interface deve ser validada no Android 16 antes de enviar.
+- Política de privacidade dentro do app em Ajustes e Sobre, com rascunho público em `docs/privacy-policy.html` **a ser hospedado em URL HTTPS pública**. Sem novo uso de rede, localização ou coleta de dados.
+- Novo `docs/GOOGLE_PLAY.md`: exigências, imagens, conteúdo e revisão da loja; `docs/PLAY_LISTING.md`: descrição proposta. Ícone PNG de 512px derivado do ícone original em `docs/play-assets/`, sujeito a revisão de qualidade.
+- SQLite v6, backup JSON schema 6 e regras financeiras preservados. Sem migração de dados nem alteração de operações monetárias.
+- **Pendente:** compilação Android real/AAB no GitHub Actions, teste de API 36 e 16 KB, vínculo e verificação de política HTTPS, ficha e declarações Play Console, teste fechado caso seja exigido. Preparado para submissão, não publicado.
 
 ## Alpha.12: painel mais compacto (somente interface)
 
@@ -136,7 +146,7 @@ Limitações atuais: sem login, sem sincronização com contas bancárias, sem G
 
 ## Versionamento
 
-A cada alteração, incrementar versão `0.1.0-alpha.N`, `versionCode` e referências na documentação/CI. Nunca usar migração SQLite destrutiva em updates.
+A cada alteração, incrementar `versionCode` e versionar `versionName`, referências de Sobre, README, CHANGELOG, scripts e nomes dos artifacts CI. Nunca usar migração SQLite destrutiva em updates.
 
 ## Referência visual
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guardrails para a alpha.12: layout compacto sem alterar dados ou a navegação."""
+"""Guardrails do layout compacto introduzido na alpha.12."""
 from pathlib import Path
 import re
 
@@ -11,9 +11,9 @@ gradle = (root / 'app/build.gradle.kts').read_text()
 workflow = (root / '.github/workflows/android.yml').read_text()
 old = Path('/mnt/data/financas_alpha11_work')
 checks = {
-    'versão Android': 'versionCode = 12' in gradle and '0.1.0-alpha.12' in gradle,
-    'versão Sobre': '0.1.0-alpha.12' in about and 'versionCode 12' in about,
-    'artefato CI': '0.1.0-alpha.12-APK-e-relatorios' in workflow,
+    'versão Android': 'versionCode = 13' in gradle and 'versionName = "1.0.0"' in gradle,
+    'versão Sobre': 'Versão 1.0.0' in about and 'versionCode 13' in about,
+    'artefato CI': 'Financas-da-Viagem-v1.0.0-APK-Debug-e-relatorios' in workflow,
     'receita / doação mantidas': all(x in screens for x in ['onClick = onAddIncome', 'onClick = onAddDonation', 'Text("Receita"', 'Text("Doação"']),
     'despesa continua destacada': 'onClick = onAddExpense' in screens and 'Text("Adicionar despesa"' in screens,
     'três atalhos conectados': all(x in screens for x in [

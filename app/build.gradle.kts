@@ -5,18 +5,38 @@ plugins {
 }
 android {
     namespace = "br.com.adriedson.financasdaviagem"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "br.com.adriedson.financasdaviagem"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 12
-        versionName = "0.1.0-alpha.12"
+        targetSdk = 36
+        versionCode = 13
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    // Variáveis apenas do ambiente do build. Chaves privadas nunca são empacotadas no projeto.
+    // Sem Secrets, um bundleRelease LOCAL fica sem assinatura e não deve ir à Play.
+    val keyFile = System.getenv("SIGNING_KEYSTORE_FILE")
+    val keyStorePassword = System.getenv("KEYSTORE_PASSWORD")
+    val keyAliasName = System.getenv("KEY_ALIAS")
+    val keyPasswordValue = System.getenv("KEY_PASSWORD")
+    val hasReleaseSigning = listOf(keyFile, keyStorePassword, keyAliasName, keyPasswordValue)
+        .all { !it.isNullOrBlank() }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("playUpload") {
+                storeFile = file(keyFile!!)
+                storePassword = keyStorePassword
+                keyAlias = keyAliasName
+                keyPassword = keyPasswordValue
+                storeType = "PKCS12"
+            }
+        }
     }
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("playUpload")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

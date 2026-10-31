@@ -1,3 +1,12 @@
+## 1.0.0 (versionCode 13) — preparação para Google Play e Android 16
+
+- Android 16/API 36 (`compileSdk`/`targetSdk`), mantendo Android 8/API 26 como mínimo, ID do pacote e SQLite v6/backup JSON v6.
+- Novo workflow `android-play.yml`: testa, gera AAB e APK Release assinados usando Secrets existentes, verifica assinaturas e publica apenas binários como artifacts.
+- Atualização de tema/sistema para `enableEdgeToEdge()` e `adjustResize` para Android 16; não oculta barras de sistema.
+- Nova tela de política de privacidade acessível por Ajustes e Sobre; documentos de política, cadastro de loja e testes pendentes.
+- Metadados e validação estruturais atualizados para 1.0.0; nenhum segredo inserido no código-fonte.
+- Compilação Android, Play Console e testes instrumentados em aparelho ainda precisam ser confirmados.
+
 ## 0.1.0-alpha.12 (versionCode 12) — painel compacto
 
 - Menor altura e espaçamento nos cartões do Painel, incluindo saldo disponível, indicadores e mensagem de categoria vazia.
