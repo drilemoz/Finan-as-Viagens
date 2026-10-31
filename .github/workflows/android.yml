@@ -35,12 +35,13 @@ jobs:
         run: python3 tools/verify_alpha12.py
       - name: Verificar preparação Google Play
         run: python3 tools/verify_play.py
+          python3 tools/verify_101.py
       - name: Testes e APK Debug
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Financas-da-Viagem-v1.0.0-APK-Debug-e-relatorios
+          name: Financas-da-Viagem-v1.0.1-APK-Debug-e-relatorios
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/reports/tests/

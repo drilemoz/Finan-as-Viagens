@@ -24,6 +24,6 @@ Importante: este aplicativo é um controle pessoal de registros financeiros. Ele
 
 **Categoria sugerida:** Finanças (a ser escolhida e confirmada na Play Console).
 
-**Notas da versão 1.0.0:** Preparação para Android 16, publicação por AAB assinado e política de privacidade acessível no aplicativo.
+**Notas da versão 1.0.1:** Novo indicador de ganhos do dia, resultado diário, painel mais claro e geração de AAB assinado sem compactação adicional.
 
 **Pendências:** imagens reais, banner, URL HTTPS da política, contato para suporte, revisão de declarações de dados e conteúdo pela Play Console. Não prometer integração bancária, conversão automática, notificações em segundo plano ou armazenamento na nuvem.

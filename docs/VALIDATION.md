@@ -97,3 +97,10 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - APK Debug e AAB Release **não foram compilados aqui**: ambiente sem Android SDK/Gradle distribuídos. O workflow do GitHub Actions deve ser executado com Secrets. Testar migração/backup, bordas, barras do sistema, teclado e rotação em Android 16 e aparelhos estreitos.
 - Comparar a assinatura do certificado de upload com o cadastro do Play App Signing. APK Debug antigo não atualiza com assinatura nova (e APK vindo da Google Play pode usar a chave de assinatura da Play, distinta da chave de upload).
 - Inspecionar as dependências do AAB/`lib/*.so` e verificar 16 KB caso haja bibliotecas nativas; não presumir conformidade por análise de Kotlin apenas.
+
+## 1.0.1 (indicadores e Artifacts Play)
+
+- `ScreenSummariesTest`: comprovar receitas do dia e resultado do dia em centavos, limites de data, ganhos de reciclagem confirmada e não inclusão de transferências.
+- `tools/verify_101.py`: garantir substituição dos indicadores, versão e `upload-artifact@v7` com `archive: false` em arquivos separados.
+- Testar o build `bundleRelease` e `assembleRelease` no Actions; inspecionar se o GitHub entrega diretamente um `.aab` e um `.apk` em Artifacts, sem ZIP. Compatibilidade da experiência de download no GitHub Manager requer teste específico no aparelho.
+- Sem migração: SQLite v6 e backup JSON schema 6 preservados.

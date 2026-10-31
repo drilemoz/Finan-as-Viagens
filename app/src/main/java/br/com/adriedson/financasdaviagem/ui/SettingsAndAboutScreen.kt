@@ -113,11 +113,11 @@ fun AboutScreen(onBack: () -> Unit, onPrivacy: () -> Unit) {
         item { Icon(Icons.Outlined.DirectionsBike, null, tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(54.dp)) }
         item { Text("Finanças da Viagem", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        item { Text("Versão 1.0.0 · versionCode 13", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("Versão 1.0.1 · versionCode 14", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { SectionTitle("Sobre o aplicativo") }
         item { Text("Controle financeiro e de reciclagem offline para a cicloviagem: carteiras, contas a pagar, transferências, doações, receitas, despesas, latinhas, cobre, metas e orçamento diário.") }
-        item { SectionTitle("Novidades da versão 1.0.0") }
-        item { Text("• Compatibilidade com Android 16 (API 36).\n• Interface adaptada às barras do sistema.\n• Política de privacidade acessível no aplicativo.\n• Preparação para distribuição por Google Play, sem alterar cálculos ou dados financeiros.") }
+        item { SectionTitle("Novidades da versão 1.0.1") }
+        item { Text("• Ganhos hoje substitui Dias de autonomia no painel.\n• Resultado de hoje e gastos por categoria ficam mais claros.\n• AAB e APK Release em arquivos separados, sem ZIP, no GitHub Actions.\n• Android 16 e política de privacidade mantidos.") }
         item { TextButton(onClick = onPrivacy) { Icon(Icons.Outlined.PrivacyTip, null); Spacer(Modifier.width(8.dp)); Text("Ler política de privacidade") } }
         item { SectionTitle("Privacidade e dados") }
         item { Text("Os lançamentos são gravados no armazenamento privado do Android. O app não solicita acesso à internet, localização ou contas bancárias. O backup só é criado ou restaurado quando você escolhe um arquivo.") }

@@ -1,3 +1,12 @@
+## 1.0.1 (versionCode 14) — indicadores diários e AAB sem ZIP
+
+- Painel: cartão **Ganhos hoje** no lugar de Dias de autonomia, usando receitas realmente registradas hoje em centavos; transferências e coletas de recicláveis não vendidas não são receitas.
+- Linha compacta **Resultado de hoje** = receitas menos despesas de hoje; seção renomeada **Gastos por categoria** para explicitar que não mistura ganhos.
+- `ScreenSummaries` calcula totais diários em uma única passagem; testes de receitas no limite do dia, entradas antigas e futuras e resultado negativo.
+- `.github/workflows/android-play.yml`: `actions/upload-artifact@v7`, `archive: false`, um Artifact AAB e outro APK Release para download direto, sem compactação externa; `android.yml` mantém relatório e APK Debug no fluxo usual.
+- `versionName 1.0.1`, `versionCode 14`; SQLite v6, JSON v6, package e chave de assinatura preservados; Android 16/API 36.
+- Compilação Android e distribuição real do Artifact sem ZIP devem ser verificadas no GitHub Actions.
+
 ## 1.0.0 (versionCode 13) — preparação para Google Play e Android 16
 
 - Android 16/API 36 (`compileSdk`/`targetSdk`), mantendo Android 8/API 26 como mínimo, ID do pacote e SQLite v6/backup JSON v6.

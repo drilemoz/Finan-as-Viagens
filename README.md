@@ -1,10 +1,17 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **1.0.0 / versionCode 13** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **1.0.1 / versionCode 14** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Versão 1.0.1: ganhos do dia e arquivos AAB diretos
+
+- Painel: **Ganhos hoje** substitui **Dias de autonomia**; o indicador soma apenas receitas registradas no dia local, incluindo vendas confirmadas de recicláveis. Uma linha **Resultado de hoje** apresenta receitas menos despesas do dia em centavos inteiros, sem incluir saldo inicial e transferências entre carteiras. **Gastos por categoria** continua contendo apenas despesas (sem subtrair ganhos).
+- O cálculo da autonomia permanece na tela **Planejamento da viagem**, mas não ocupa mais um cartão do painel.
+- GitHub Actions: workflow Play publica **dois Artifacts individuais**, `.aab` e `.apk`, usando `actions/upload-artifact@v7` com `archive: false` (sem ZIP externo). Isso não altera nem substitui o comportamento de Artifacts antigos; o GitHub Manager poderá depender de suporte à nova modalidade na interface de download.
+- `versionName 1.0.1`, `versionCode 14`; preservados package, API 36, SQLite v6 e JSON v6. Não inserir certificados e Secrets no repositório.
 
 ## Versão 1.0.0: preparação Google Play (Android 16)
 
-- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26` e `versionCode = 13`; sem troca do pacote Android.
+- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26` e `versionCode = 14` na versão atual; sem troca do pacote Android.
 - Geração de **AAB Release assinado**, além de APK Release para instalação manual, por `.github/workflows/android-play.yml` no GitHub Actions, usando os mesmos quatro Secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD` já criados no GitHub Manager. O certificado é usado como **chave de upload**; a assinatura dos APKs distribuídos pela loja deve ser gerenciada pelo Google Play App Signing. Nunca commitar `.env`, `.p12`, `.jks` ou keystore.
 - Compatibilidade com telas ponta a ponta no Android 16: `enableEdgeToEdge()` e ajuste de teclado (`adjustResize`), com ícones das barras claros/escuros conforme o tema. A interface deve ser validada no Android 16 antes de enviar.
 - Política de privacidade dentro do app em Ajustes e Sobre, com rascunho público em `docs/privacy-policy.html` **a ser hospedado em URL HTTPS pública**. Sem novo uso de rede, localização ou coleta de dados.
@@ -120,9 +127,9 @@ Aplicativo Android **1.0.0 / versionCode 13** para controle offline de finanças
 
 ## Compilar
 
-**Android Studio**: abra esta pasta como projeto Gradle, configure JDK 17 e SDK Android 35, execute **Sync Project with Gradle Files** e `app > Tasks > build > assembleDebug`.
+**Android Studio**: abra esta pasta como projeto Gradle, configure JDK 17 e SDK Android 36, execute **Sync Project with Gradle Files** e `app > Tasks > build > assembleDebug`.
 
-**GitHub Actions**: publique esta pasta na raiz de um repositório no GitHub e execute **Actions → Gerar APK → Run workflow**. Workflow usa Gradle 8.13, JDK 17, `android-actions/setup-android@v4` e Android SDK 35, executa testes unitários e publica APK Debug em Artifacts em caso de sucesso. Se o build falhar, baixe o log, sem presumir sucesso.
+**GitHub Actions**: publique esta pasta na raiz de um repositório no GitHub e execute **Actions → Gerar APK → Run workflow**. Workflow usa Gradle 8.13, JDK 17, `android-actions/setup-android@v4` e Android SDK 36, executa testes unitários e publica APK Debug em Artifacts em caso de sucesso. Se o build falhar, baixe o log, sem presumir sucesso.
 
 > Este pacote **não inclui `gradle-wrapper.jar` nem um APK**. O workflow utiliza `gradle/actions/setup-gradle` para não exigir wrapper. O projeto fonte foi preparado para compilação, mas **não foi compilado no ambiente de geração** (sem Android SDK e Gradle/artefatos em cache). É preciso validar o novo build Android; os logs do build 1 mostraram falha antes da compilação em `setup-android@v3`, ao tentar instalar o pacote obsoleto `tools`. A alpha.2 corrigiu esse passo com v4 e `packages: platform-tools`.
 

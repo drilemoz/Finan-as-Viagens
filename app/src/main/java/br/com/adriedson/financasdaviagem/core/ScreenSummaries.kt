@@ -9,8 +9,11 @@ data class DashboardTotals(
     val expenseCents: Long,
     val donationCents: Long,
     val todayExpenseCents: Long,
+    val todayIncomeCents: Long,
     val categories: List<Pair<String, Long>>
-)
+) {
+    val todayNetCents: Long get() = Math.subtractExact(todayIncomeCents, todayExpenseCents)
+}
 
 data class RecyclingTotals(
     val cansInStock: Long,
@@ -26,10 +29,13 @@ object ScreenSummaries {
         var expense = 0L
         var donation = 0L
         var todayExpense = 0L
+        var todayIncome = 0L
         val categories = HashMap<String, Long>()
         for (entry in entries) {
             if (entry.kind == "income") {
                 income = Math.addExact(income, entry.brlCents)
+                if (entry.createdAt in dayStartMillis..nowMillis)
+                    todayIncome = Math.addExact(todayIncome, entry.brlCents)
                 if (entry.category == "Doação") donation = Math.addExact(donation, entry.brlCents)
             } else if (entry.kind == "expense") {
                 expense = Math.addExact(expense, entry.brlCents)
@@ -38,7 +44,7 @@ object ScreenSummaries {
                     todayExpense = Math.addExact(todayExpense, entry.brlCents)
             }
         }
-        return DashboardTotals(income, expense, donation, todayExpense,
+        return DashboardTotals(income, expense, donation, todayExpense, todayIncome,
             categories.toList().sortedByDescending { it.second })
     }
 

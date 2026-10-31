@@ -34,6 +34,7 @@ jobs:
           python3 tools/verify_alpha11.py
           python3 tools/verify_alpha12.py
           python3 tools/verify_play.py
+          python3 tools/verify_101.py
       - name: Testar e gerar AAB e APK Release assinados
         shell: bash
         env:
@@ -62,11 +63,19 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
           # Somente artefatos públicos; nunca exportar chave ou secrets.
           mkdir -p release-output
-          cp "$AAB" "release-output/Financas-da-Viagem-v1.0.0-Play.aab"
-          cp "$APK" "release-output/Financas-da-Viagem-v1.0.0-Release.apk"
-      - name: Disponibilizar AAB e APK
-        uses: actions/upload-artifact@v4
+          cp "$AAB" "release-output/Financas-da-Viagem-v1.0.1-Play.aab"
+          cp "$APK" "release-output/Financas-da-Viagem-v1.0.1-Release.apk"
+      # upload-artifact@v7 com archive:false entrega um arquivo direto, sem ZIP.
+      # Cada chamada deve enviar exatamente UM arquivo. O nome será o próprio filename.
+      - name: Disponibilizar AAB sem ZIP
+        uses: actions/upload-artifact@v7
         with:
-          name: Financas-da-Viagem-v1.0.0-Google-Play
-          path: release-output/*
+          path: release-output/Financas-da-Viagem-v1.0.1-Play.aab
+          archive: false
+          if-no-files-found: error
+      - name: Disponibilizar APK Release sem ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          path: release-output/Financas-da-Viagem-v1.0.1-Release.apk
+          archive: false
           if-no-files-found: error

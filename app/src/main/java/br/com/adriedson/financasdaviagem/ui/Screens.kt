@@ -62,7 +62,8 @@ fun DashboardScreen(
     val today = totals.todayExpenseCents
     val budgetAlert = TripPlanningMath.calculate(balance, settings.dailyBudgetCents, settings.tripGoalCents,
         settings.plannedTripDays, settings.budgetAlertPercent, today).alert
-    val autonomy = FinanceMath.autonomyDays(balance, settings.dailyBudgetCents)
+    val todayIncome = totals.todayIncomeCents
+    val todayNet = totals.todayNetCents
     val categories = totals.categories
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -107,10 +108,23 @@ fun DashboardScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ValueCard("Dias de autonomia", autonomy?.let { "$it dias" } ?: "Indisponível",
-                    Icons.Outlined.HourglassBottom, Modifier.weight(1f), compact = true)
+                ValueCard("Ganhos hoje", FinanceMath.format(todayIncome),
+                    Icons.Outlined.TrendingUp, Modifier.weight(1f), compact = true)
                 ValueCard("Gastos da viagem", FinanceMath.format(expense),
                     Icons.Outlined.TrendingDown, Modifier.weight(1f), compact = true)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("Resultado de hoje", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(FinanceMath.format(todayNet),
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                    color = if (todayNet < 0L) MaterialTheme.colorScheme.error
+                        else if (todayNet > 0L) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface)
             }
         }
         if (budgetAlert != DailyBudgetAlert.NONE) {
@@ -124,7 +138,7 @@ fun DashboardScreen(
                 }
             }
         }
-        item { SectionTitle("Despesas por categoria") }
+        item { SectionTitle("Gastos por categoria") }
         if (categories.isEmpty()) {
             item { EmptyState("Nenhuma despesa registrada", "Seus gastos aparecerão aqui.",
                 Icons.Outlined.ReceiptLong, compact = true) }

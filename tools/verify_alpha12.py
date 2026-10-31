@@ -11,9 +11,9 @@ gradle = (root / 'app/build.gradle.kts').read_text()
 workflow = (root / '.github/workflows/android.yml').read_text()
 old = Path('/mnt/data/financas_alpha11_work')
 checks = {
-    'versão Android': 'versionCode = 13' in gradle and 'versionName = "1.0.0"' in gradle,
-    'versão Sobre': 'Versão 1.0.0' in about and 'versionCode 13' in about,
-    'artefato CI': 'Financas-da-Viagem-v1.0.0-APK-Debug-e-relatorios' in workflow,
+    'versão Android': 'versionCode = 14' in gradle and 'versionName = "1.0.1"' in gradle,
+    'versão Sobre': 'Versão 1.0.1' in about and 'versionCode 14' in about,
+    'artefato CI': 'Financas-da-Viagem-v1.0.1-APK-Debug-e-relatorios' in workflow,
     'receita / doação mantidas': all(x in screens for x in ['onClick = onAddIncome', 'onClick = onAddDonation', 'Text("Receita"', 'Text("Doação"']),
     'despesa continua destacada': 'onClick = onAddExpense' in screens and 'Text("Adicionar despesa"' in screens,
     'três atalhos conectados': all(x in screens for x in [

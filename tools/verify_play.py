@@ -18,7 +18,7 @@ repo = get('app/src/main/java/br/com/adriedson/financasdaviagem/data/FinanceRepo
 root_xml = ET.fromstring(manifest)
 checks = {
     'SDK Android 16': 'compileSdk = 36' in gradle and 'targetSdk = 36' in gradle and 'minSdk = 26' in gradle,
-    'versionamento estável': 'versionCode = 13' in gradle and 'versionName = "1.0.0"' in gradle,
+    'versionamento estável': 'versionCode = 14' in gradle and 'versionName = "1.0.1"' in gradle,
     'pacote original': 'br.com.adriedson.financasdaviagem' in gradle and 'android:name=".MainActivity"' in manifest,
     'nenhuma permissão extra': not root_xml.findall('uses-permission') and 'usesCleartextTraffic="false"' in manifest,
     'backup Android desabilitado': 'allowBackup="false"' in manifest,
@@ -27,13 +27,15 @@ checks = {
     'assinatura apenas de ambiente': 'SIGNING_KEYSTORE_FILE' in gradle and 'storeType = "PKCS12"' in gradle and 'playUpload' in gradle,
     'AAB Release assinado': ':app:bundleRelease' in release and 'jarsigner -verify' in release and 'apksigner' in release,
     'secrets GitHub': all('secrets.' + k in release for k in ('KEYSTORE_BASE64','KEYSTORE_PASSWORD','KEY_ALIAS','KEY_PASSWORD')),
-    'sem publicar chave': 'release-output/*' in release and 'cp "$SIGNING_KEYSTORE_FILE"' not in release,
-    'debug atualizado': "platforms;android-36" in debug and 'v1.0.0-APK-Debug' in debug,
+    'sem publicar chave': 'release-output/Financas-da-Viagem-v1.0.1-Play.aab' in release and 'cp "$SIGNING_KEYSTORE_FILE"' not in release,
+    'debug atualizado': "platforms;android-36" in debug and 'v1.0.1-APK-Debug' in debug,
     'política acessível': '"privacy" -> PrivacyPolicyScreen' in main and 'onPrivacy = { screen = "privacy" }' in main and 'Política de privacidade' in settings,
     'política pública para hospedagem': '<html lang="pt-BR">' in get('docs/privacy-policy.html'),
     'instruções de publicação': 'android-play.yml' in get('docs/GOOGLE_PLAY.md'),
     'sem migração SQL': 'SQLiteOpenHelper(appContext, name, null, 6)' in ledger and '"schemaVersion", 6' in repo,
-    'sobre sincronizado': 'Versão 1.0.0 · versionCode 13' in settings,
+    'sobre sincronizado': 'Versão 1.0.1 · versionCode 14' in settings,
+    'artifacts Play sem ZIP': release.count('actions/upload-artifact@v7') == 2 and release.count('archive: false') >= 2 and 'upload-artifact@v4' not in release,
+    'AAB e APK separados': 'v1.0.1-Play.aab' in release and 'v1.0.1-Release.apk' in release,
     'sem keystore no código': not any(p.suffix.lower() in {'.p12','.jks','.keystore','.env'} for p in root.rglob('*') if p.is_file()),
 }
 for name, ok in checks.items():

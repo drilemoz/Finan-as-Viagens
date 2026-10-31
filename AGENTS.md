@@ -51,3 +51,6 @@
 - 1.0.0 (versionCode 13): `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`; preservar `applicationId` e compatibilidade SQLite v6 / JSON v6.
 - Para Google Play, gerar AAB Release assinado com os quatro Secrets existentes e Play App Signing; não inserir keystores/Secrets no repositório, artifacts, prints ou logs. Não gerar nova chave sem necessidade.
 - Antes de declarar pronto para publicação, verificar builds, AAB assinado e Play Console, privacidade HTTPS pública, declaração de dados, recursos financeiros, imagem e screenshots; versão 1.0.0 não implica aprovação da Play.
+
+- 1.0.1 (versionCode 14): o Painel exibe Ganhos hoje e Resultado de hoje, ambos derivados de receitas/despesas reais do dia local, excluindo saldo inicial e transferências. A seção Gastos por categoria mostra somente despesas. Manter autonomia na tela Planejamento.
+- Artifact Release Play: `actions/upload-artifact@v7` com `archive: false` exige **um arquivo por step** e o GitHub usa o nome do arquivo como nome do Artifact. Testar integração com versões do GitHub Manager que esperam ZIP. Nunca incluir Secrets ou keystore no artifact.
