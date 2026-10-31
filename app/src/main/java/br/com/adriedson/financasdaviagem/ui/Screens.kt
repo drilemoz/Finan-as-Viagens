@@ -1,5 +1,6 @@
 package br.com.adriedson.financasdaviagem.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.adriedson.financasdaviagem.core.DailyBudgetAlert
@@ -65,14 +67,14 @@ fun DashboardScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = rememberLazyListState(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 25.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Finanças da viagem", fontSize = 24.sp, fontWeight = FontWeight.SemiBold,
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Finanças da viagem", fontSize = 23.sp, fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground)
                     Text("Painel financeiro", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -83,11 +85,12 @@ fun DashboardScreen(
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(23.dp), color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 15.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Saldo disponível", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(FinanceMath.format(balance), fontSize = 34.sp, fontWeight = FontWeight.Bold,
+                    Text(FinanceMath.format(balance), fontSize = 30.sp, fontWeight = FontWeight.Bold,
                         color = if (balance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                     Text("Reserva de emergência separada: ${FinanceMath.format(reserve)}",
                         color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
@@ -97,17 +100,17 @@ fun DashboardScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ValueCard("Orçamento diário", FinanceMath.format(settings.dailyBudgetCents),
-                    Icons.Outlined.CalendarMonth, Modifier.weight(1f))
+                    Icons.Outlined.CalendarMonth, Modifier.weight(1f), compact = true)
                 ValueCard("Gasto hoje", FinanceMath.format(today), Icons.Outlined.AccountBalanceWallet, Modifier.weight(1f),
-                    highlight = settings.dailyBudgetCents > 0 && today > settings.dailyBudgetCents)
+                    highlight = settings.dailyBudgetCents > 0 && today > settings.dailyBudgetCents, compact = true)
             }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ValueCard("Dias de autonomia", autonomy?.let { "$it dias" } ?: "Indisponível",
-                    Icons.Outlined.HourglassBottom, Modifier.weight(1f))
+                    Icons.Outlined.HourglassBottom, Modifier.weight(1f), compact = true)
                 ValueCard("Gastos da viagem", FinanceMath.format(expense),
-                    Icons.Outlined.TrendingDown, Modifier.weight(1f))
+                    Icons.Outlined.TrendingDown, Modifier.weight(1f), compact = true)
             }
         }
         if (budgetAlert != DailyBudgetAlert.NONE) {
@@ -123,10 +126,11 @@ fun DashboardScreen(
         }
         item { SectionTitle("Despesas por categoria") }
         if (categories.isEmpty()) {
-            item { EmptyState("Nenhuma despesa registrada", "Seus gastos aparecerão aqui.", Icons.Outlined.ReceiptLong) }
+            item { EmptyState("Nenhuma despesa registrada", "Seus gastos aparecerão aqui.",
+                Icons.Outlined.ReceiptLong, compact = true) }
         } else {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     categories.take(6).forEachIndexed { i, (category, value) ->
                         CategoryBar(category, value, expense, colors[i % colors.size])
                     }
@@ -134,40 +138,42 @@ fun DashboardScreen(
             }
         }
         item {
-            Button(onClick = onAddExpense, modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp)) {
-                Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(10.dp))
-                Text("Adicionar despesa", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Button(onClick = onAddExpense, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                shape = RoundedCornerShape(16.dp)) {
+                Icon(Icons.Outlined.Add, null, modifier = Modifier.size(21.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Adicionar despesa", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
         }
+        // Receita e Doação compartilham um contêiner, mas continuam ações distintas.
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                OutlinedButton(onClick = onAddIncome, modifier = Modifier.weight(1f).height(52.dp),
-                    shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
-                    Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(3.dp)); Text("Receita")
+            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onAddIncome, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(21.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text("Receita", fontWeight = FontWeight.Medium)
+                    }
+                    VerticalDivider(modifier = Modifier.height(27.dp), thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant)
+                    TextButton(onClick = onAddDonation, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        Icon(Icons.Outlined.VolunteerActivism, contentDescription = null, modifier = Modifier.size(21.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text("Doação", fontWeight = FontWeight.Medium)
+                    }
                 }
-                OutlinedButton(onClick = onAddDonation, modifier = Modifier.weight(1f).height(52.dp),
-                    shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
-                    Icon(Icons.Outlined.VolunteerActivism, null); Spacer(Modifier.width(3.dp)); Text("Doação")
-                }
             }
         }
+        // Três atalhos independentes em uma única linha, com texto curto para telas estreitas.
         item {
-            OutlinedButton(onClick = onPlanning, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Flag, null); Spacer(Modifier.width(8.dp))
-                Text("Planejar orçamento e metas da viagem")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onReports, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.BarChart, null); Spacer(Modifier.width(8.dp))
-                Text("Relatórios de receitas, despesas e trabalho")
-            }
-        }
-        item {
-            TextButton(onClick = onBills, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.EventNote, null); Spacer(Modifier.width(8.dp))
-                Text("Gerenciar contas a pagar e despesas")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DashboardShortcut("Planejar", Icons.Outlined.Flag, onPlanning, Modifier.weight(1f))
+                DashboardShortcut("Relatórios", Icons.Outlined.BarChart, onReports, Modifier.weight(1f))
+                DashboardShortcut("Gerenciar", Icons.Outlined.EventNote, onBills, Modifier.weight(1f))
             }
         }
         if (donationIncome > 0L) {
@@ -196,6 +202,22 @@ fun DashboardScreen(
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(entries.take(4), key = { "recent-${it.id}" }, contentType = { "entry" }) { entry -> EntryRow(entry, null) }
+        }
+    }
+}
+
+/** Ações rápidas com altura fixa e área de toque adequada para uso na bicicleta. */
+@Composable
+private fun DashboardShortcut(label: String, icon: ImageVector, onClick: () -> Unit,
+    modifier: Modifier = Modifier) {
+    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 72.dp),
+        shape = RoundedCornerShape(14.dp),
+        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+            Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
         }
     }
 }

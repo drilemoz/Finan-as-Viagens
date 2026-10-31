@@ -44,3 +44,6 @@
 - Alpha.11 (versionCode 11): `LedgerDb` SQLite v6 com tabela única `app_settings` que recebe preferências legadas em migração 5→6; dados financeiros e configurações devem ser restaurados na mesma transação SQLite. Não gravar novas preferências financeiras em SharedPreferences.
 - Manter o backup JSON schema 6 e compatibilidade importação 1–6. Histórico usa paginação `historyPage` por `(created_at DESC,id DESC)`, páginas de até 60, com filtros no SQL; não carregar todas as entradas para construir a tela Histórico.
 - `RecyclingEditors.kt` concentra os formulários sem alterar regras de coleta/venda. Testes Android devem usar banco isolado; nunca excluir o banco de produção durante instrumentação.
+
+- Alpha.12 (versionCode 12): compactação somente da UI inicial; botões Receita e Doação compartilham superfície, mas mantêm callbacks distintos. Planejar, Relatórios e Gerenciar têm atalhos individuais lado a lado e toque mínimo 72 dp. Não reduzir áreas clicáveis abaixo de 48 dp nem alterar regras financeiras.
+- Preservar SQLite v6 e backup JSON schema 6. Testar modo claro/escuro e diferentes larguras antes de afirmar melhora visual comprovada no Android.

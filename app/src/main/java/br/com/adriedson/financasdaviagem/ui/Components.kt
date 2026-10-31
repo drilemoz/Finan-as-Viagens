@@ -25,17 +25,21 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun ValueCard(
     title: String, value: String, icon: ImageVector, modifier: Modifier = Modifier,
-    subtitle: String? = null, highlight: Boolean = false
+    subtitle: String? = null, highlight: Boolean = false, compact: Boolean = false
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(23.dp)) {
-        Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+        shape = RoundedCornerShape(if (compact) 19.dp else 23.dp)) {
+        Column(Modifier.padding(if (compact) 13.dp else 17.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 13.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp)) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(if (compact) 18.dp else 19.dp))
                 Text(title, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
             }
-            Text(value, fontSize = if (value.length > 13) 20.sp else 25.sp,
+            Text(value, fontSize = if (compact) {
+                if (value.length > 10) 18.sp else 22.sp
+            } else if (value.length > 13) 20.sp else 25.sp,
                 fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall,
@@ -45,10 +49,12 @@ fun ValueCard(
 }
 
 @Composable
-fun EmptyState(title: String, description: String, icon: ImageVector, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Icon(icon, null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+fun EmptyState(title: String, description: String, icon: ImageVector, modifier: Modifier = Modifier,
+    compact: Boolean = false) {
+    Column(modifier.fillMaxWidth().padding(vertical = if (compact) 10.dp else 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp)) {
+        Icon(icon, null, modifier = Modifier.size(if (compact) 32.dp else 40.dp), tint = MaterialTheme.colorScheme.primary)
         Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
         Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall)

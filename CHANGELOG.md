@@ -1,3 +1,12 @@
+## 0.1.0-alpha.12 (versionCode 12) — painel compacto
+
+- Menor altura e espaçamento nos cartões do Painel, incluindo saldo disponível, indicadores e mensagem de categoria vazia.
+- Ações Receita e Doação em um controle dividido de 2 opções, mantendo as categorias e seus formulários.
+- Atalhos Planejar, Relatórios e Gerenciar em 3 mini-cartões na mesma linha, com ícones e toque de pelo menos 72 dp.
+- Botão Adicionar despesa destacado, porém mais compacto; ajustes exclusivos da tela inicial.
+- Sem alterações nas operações financeiras, navegação, banco SQLite v6 ou backups JSON schema 6.
+- Testes locais de sintaxe e estrutura; compilação Android e validação visual em aparelho ainda pendentes.
+
 ## 0.1.0-alpha.11 (versionCode 11) — paginação e consistência dos dados
 
 - Histórico passa para paginação SQL de 60 itens, com filtros no banco, cursor estável por data/ID, carregamento incremental e opção de repetir consulta após falha.

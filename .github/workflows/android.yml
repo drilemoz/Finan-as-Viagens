@@ -31,12 +31,14 @@ jobs:
         run: python3 tools/verify_refactor.py
       - name: Testar paginação e restauração (Python/SQLite)
         run: python3 tools/verify_alpha11.py
+      - name: Verificar layout e navegação da alpha.12
+        run: python3 tools/verify_alpha12.py
       - name: Testes e APK Debug
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Financas-da-Viagem-v0.1.0-alpha.11-APK-e-relatorios
+          name: Financas-da-Viagem-v0.1.0-alpha.12-APK-e-relatorios
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/reports/tests/

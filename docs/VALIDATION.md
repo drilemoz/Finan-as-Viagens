@@ -82,3 +82,10 @@ A CI da alpha.2 **não foi executada** nesta entrega; verificações de estrutur
 - `python3 tools/verify_alpha11.py`: validar paginação SQL por cursor/filtros e rollback da transação combinada; `python3 tools/verify_refactor.py` mantém teste de saldos.
 - Teste instrumentado `SettingsMigrationAndRestoreTest` verifica migração 5→6 de banco isolado e restauração com rollback após falha intencional na gravação dos parâmetros. **Ainda não executado em dispositivo/emulador**.
 - Android build completo e FPS em celular **pendentes**. Antes de atualizar, criar backup JSON e não desinstalar o app para manter dados locais.
+
+## 0.1.0-alpha.12
+
+- Verificar análise sintática de arquivos Kotlin e regressões locais de SQL.
+- Confirmar UI estática: controles unificados de Receita/Doação, três atalhos lado a lado, estado vazio compacto e áreas clicáveis >=48 dp.
+- **Pendente em aparelho:** inspecionar modo claro/escuro, fonte ampliada, telas estreitas, rolagem e toque em cada ação; sem benchmark de FPS nem build Android local.
+- Sem migração: SQLite v6 e backup JSON schema 6 preservados.

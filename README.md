@@ -1,6 +1,14 @@
 # Finanças da Viagem 🚴
 
-Aplicativo Android **0.1.0-alpha.11 / versionCode 11** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+Aplicativo Android **0.1.0-alpha.12 / versionCode 12** para controle offline de finanças da cicloviagem. Kotlin + Jetpack Compose + Material 3 + SQLiteOpenHelper. Interface inspirada na referência enviada pelo usuário, com modo claro, escuro e sistema.
+
+## Alpha.12: painel mais compacto (somente interface)
+
+- Cartão de saldo, cartões de indicadores e estado vazio com margens e espaçamentos menores **somente no Painel**, preservando tipografia legível e cartões de Planejamento.
+- Botão primário **Adicionar despesa** mais baixo; botões **Receita** e **Doação** reunidos em um mesmo contêiner dividido, preservando ações separadas.
+- **Planejar**, **Relatórios** e **Gerenciar** lado a lado com ícones, textos curtos e áreas de toque mínimas de 72 dp; mantidos os mesmos destinos e callbacks.
+- `ValueCard` e `EmptyState` aceitam `compact = true` apenas na tela inicial; restante das telas não muda.
+- Nenhuma mudança no SQLite **v6**, backup JSON schema **6**, cálculos, funcionalidades, permissões ou necessidade de migração. Validação de compilação e ergonomia em celular permanece pendente.
 
 ## Alpha.11: histórico paginado e backup transacional
 
